@@ -4,14 +4,9 @@ from typing import Optional, List
 import warnings
 
 # third-party imports
-import tensorflow as tf
-from tensorflow.keras import layers, models
-from tensorflow.keras.models import Sequential, Model
-from tensorflow.keras.layers import (
-    GRU, Bidirectional, Dense, Dropout, Input, LayerNormalization
-)
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.regularizers import l1_l2
+import torch
+import torch.nn as nn
+import torch.optim as optim
 
 
 # custom imports
@@ -20,13 +15,71 @@ from .config_loader import GRUConfig
 # ignore warnings
 warnings.filterwarnings("ignore")
 
+class GRUModel(nn.Module):
+    """
+    PyTorch GRU-based neural network model.
+    """
+    def __init__(self, config: GRUConfig):
+        super(GRUModel, self).__init__()
+        self.config = config
+        
+        # Build GRU layers
+        self.gru_layers = nn.ModuleList()
+        self.dropout_layers = nn.ModuleList()
+        
+        for i in range(config.num_layers):
+            input_size = config.input_dim if i == 0 else (config.gru_units * 2 if config.bidirectional else config.gru_units)
+            
+            gru_layer = nn.GRU(
+                input_size=input_size,
+                hidden_size=config.gru_units,
+                num_layers=1,
+                batch_first=True,
+                bidirectional=config.bidirectional
+            )
+            
+            self.gru_layers.append(gru_layer)
+            
+            if config.dropout > 0.0:
+                self.dropout_layers.append(nn.Dropout(config.dropout))
+        
+        # Output layer
+        final_input_size = config.gru_units * 2 if config.bidirectional else config.gru_units
+        self.output_layer = nn.Linear(final_input_size, config.num_classes)
+        self.softmax = nn.Softmax(dim=1)
+    
+    def forward(self, x):
+        """
+        Forward pass through the network.
+        
+        Args:
+            x: Input tensor of shape (batch_size, seq_len, input_dim)
+            
+        Returns:
+            Output tensor of shape (batch_size, num_classes)
+        """
+        for i, gru_layer in enumerate(self.gru_layers):
+            x, _ = gru_layer(x)
+            
+            if i < len(self.dropout_layers):
+                x = self.dropout_layers[i](x)
+        
+        # Take the last time step output
+        x = x[:, -1, :]
+        
+        # Pass through output layer
+        x = self.output_layer(x)
+        x = self.softmax(x)
+        
+        return x
+
+
 class GRUModelBuilder:
     """
     Builds a GRU-based neural network model based on the provided configuration.
     """
     def __init__(self, config):
         self.config = config
-        self.validate_config()
         self.validate_config()
         
     def validate_config(self):
@@ -39,15 +92,15 @@ class GRUModelBuilder:
         # checking for potential issues 
         estimated_params = self._estimated_memory_usage()
         if estimated_params > 1e7:
-            tf.get_logger().warning(
-                f"Estimated number of parameters is very high: {estimated_params}. "
+            print(
+                f"WARNING: Estimated number of parameters is very high: {estimated_params}. "
                 "This may lead to high memory usage and slow training."
             )  
             
         # validate bidirectional + classification combination
         if self.config.bidirectional and self.config.num_classes > 100:
-            tf.get_logger().warning(
-                "Using bidirectional GRU with a large number of classes may lead to "
+            print(
+                "WARNING: Using bidirectional GRU with a large number of classes may lead to "
                 "excessive memory usage. Consider using unidirectional GRU or reducing "
                 "the number of classes."
             )
@@ -65,17 +118,16 @@ class GRUModelBuilder:
             raise ValueError("num_classes must be greater than 1 for classification tasks.")
         if self.config.input_dim is None or self.config.input_dim <= 0:
             raise ValueError("input_dim must be a positive integer representing the number of features.")
-        # l1_reg and l2_reg are not defined in GRUConfig, so skip this validation
         if not self.config.metrics or not all(isinstance(m, str) for m in self.config.metrics):
             raise ValueError("metrics must be a non-empty list of strings.")
         if self.config.export_path is not None and not isinstance(self.config.export_path, str):
             raise ValueError("export_path must be a string if provided.")
         
-    def build_model(self) -> Model:
+    def build_model(self) -> nn.Module:
         """Builds the GRU model based on the configuration.
 
         Returns:
-            Model: The constructed GRU model.
+            nn.Module: The constructed GRU model.
             
         Args:
             config (GRUConfig): Configuration parameters for building the model.
@@ -85,122 +137,18 @@ class GRUModelBuilder:
             followed by dropout and dense layers. The final layer uses softmax activation for
             multi-class classification.
         """
-        model = Sequential(name="GRU_Model")
+        model = GRUModel(self.config)
         
-        # Add input layer for better models inspection
-        model.add(Input(
-            shape=(self.config.seq_len, self.config.input_dim),
-            name="sequence_input"
-        ))
-        
-        
-        # Build GRU layers
-        self._add_gru_layers(model)
-        
-        # Adding output layer
-        self._add_output_layer(model)
-        # Compile the model
-        self._compile_model(model)
+        # Move model to GPU if available
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        model = model.to(device)
         
         return model
-    
-    def _add_gru_layers(self, model: Sequential) -> None:
-        """Adds GRU layers to the model based on the configuration.
-
-        Args:
-            model (Sequential): The Keras Sequential model to which GRU layers will be added.
-        """
-        
-        for i in range(self.config.num_layers):
-            # Determine if the GRU layer should return sequences
-            return_sequences = (i < self.config.num_layers - 1)
-            # create GRU layer
-            gru_layer = GRU(
-                units=self.config.gru_units,
-                return_sequences=return_sequences,
-                dropout=0.0, # Dropout handled separately
-                # Skip regularization as l1_reg and l2_reg are not defined
-                name=f"gru_layer_{i+1}"
-            )
-            # Wrap with Bidirectional if configured
-            if self.config.bidirectional:
-                gru_layer = Bidirectional(
-                    gru_layer, 
-                    name=f"bidirectional_gru_{i+1}"
-                )
-                
-            model.add(gru_layer)
-            
-            # Add dropout for regularization
-            if self.config.dropout > 0.0:
-                model.add(Dropout(
-                    self.config.dropout, 
-                    name=f"dropout_{i+1}"
-                ))
-                
-            # Layer normalization is not configured in GRUConfig
-            # Skip layer normalization step
-                
-    def _add_output_layer(self, model: Sequential) -> None:
-        """Adds the output layer to the model based on the configuration.
-
-        Args:
-            model (Sequential): The Keras Sequential model to which the output layer will be added.
-        """
-        
-        model.add(Dense(
-            units=self.config.num_classes,
-            activation='softmax',
-            name="output_layer"
-        ))
-        
-    def _compile_model(self, model: Sequential) -> None:
-        """Compiles the model with the specified optimizer, loss function, and metrics.
-
-        Args:
-            model (Sequential): The Keras Sequential model to be compiled.
-        """
-        optimizer = Adam(
-            learning_rate=self.config.learning_rate,
-            beta_1=0.9,      # Exponential decay rate for 1st moment
-            beta_2=0.999,    # Exponential decay rate for 2nd moment
-            epsilon=1e-7,    # Small constant for numerical stability
-            amsgrad=False    # Whether to apply AMSGrad variant
-        )
-
-        # Choose loss function based on problem type
-        if self.config.num_classes == 2:
-            loss = 'binary_crossentropy'
-        else:
-            loss = 'sparse_categorical_crossentropy'  # Assumes integer labels
-            
-        
-        # Convert metrics to Keras format for sparse categorical targets
-        keras_metrics = []
-        for metric in self.config.metrics:
-            if metric == 'accuracy':
-                keras_metrics.append('accuracy')
-            elif metric in ['precision', 'recall', 'f1_score']:
-                # Skip these metrics during training to avoid shape issues
-                # We'll calculate them manually during evaluation
-                tf.get_logger().info(f"{metric} metric will be calculated manually during evaluation")
-                continue
-            elif metric == 'val_loss':
-                # val_loss is automatically tracked during training, no need to add here
-                continue
-            else:
-                keras_metrics.append(metric)
-        
-        model.compile(
-            optimizer=optimizer,
-            loss=loss,
-            metrics=keras_metrics
-        )
     
     def _estimated_memory_usage(self) -> int:
         params = 0
         
-        # GRU§ layers
+        # GRU layers
         for layer_idx in range(self.config.num_layers):
             if layer_idx == 0:
                 input_size = self.config.input_dim
@@ -225,39 +173,28 @@ class GRUModelBuilder:
         if self.config.bidirectional:
             final_input *= 2
         params += (final_input + 1) * self.config.num_classes
-        params += (final_input + 1) * self.config.num_classes
         
         return params
     
-    def get_model_summary(self, model: Sequential) -> None:
+    def get_model_summary(self, model: nn.Module) -> None:
         """Prints the summary of the model.
 
         Args:
-            model (Sequential): The Keras Sequential model whose summary will be printed.
+            model (nn.Module): The PyTorch model whose summary will be printed.
         """
         
-        model= self.build_model()
-
-        # Capture model.summary() output
-        import io
-        import sys
-        
-        old_stdout = sys.stdout
-        sys.stdout = summary_buffer = io.StringIO()
-        model.summary()
-        sys.stdout = old_stdout
-        
-        summary_text = summary_buffer.getvalue()
+        model = self.build_model()
         
         return f"""
             {self.config.get_model_summary()}
 
-            Detailed Keras Model Summary:
+            PyTorch Model Architecture:
             ============================
-            {summary_text}
+            {model}
                     """.strip()
+    
     @staticmethod
-    def build_gru_model(config: GRUConfig) -> Model:
+    def build_gru_model(config: GRUConfig) -> nn.Module:
         """
         Builds and compiles a GRU-based neural network model based on the provided configuration.
 
@@ -272,7 +209,7 @@ class GRUModelBuilder:
 
 
 # Module-level function to expose the functionality
-def build_gru_model(config: GRUConfig) -> Model:
+def build_gru_model(config: GRUConfig) -> nn.Module:
     """
     Builds and compiles a GRU-based neural network model based on the provided configuration.
 
@@ -280,6 +217,6 @@ def build_gru_model(config: GRUConfig) -> Model:
         config (GRUConfig): Configuration parameters for building the model.
 
     Returns:
-        Model: Compiled Keras model ready for training.
+        nn.Module: PyTorch model ready for training.
     """
     return GRUModelBuilder.build_gru_model(config)

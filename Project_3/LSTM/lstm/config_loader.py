@@ -130,6 +130,13 @@ class LSTMConfig(BaseModel):
         description="Dropout rate for regularization (0.0-0.9)"
     )
     
+    weight_decay: float = Field(
+        0.0,
+        ge=0.0,
+        le=0.1,
+        description="L2 regularization (weight decay) factor"
+    )
+    
     # === Architecture Variants ===
     bidirectional: bool = Field(
         False,

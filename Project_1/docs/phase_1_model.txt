@@ -1,0 +1,50 @@
+Phase-1 (Layer-1) Model Summary
+
+Source: `Layer_1_iteration_3_ii/code.ipynb` (references training data at `Layer_1_iteration_3/layer1_training_data.csv`)
+
+Model type:
+- Variational Autoencoder (VAE) implemented as a custom `keras.Model` (`Layer1AutoencoderVAE`).
+
+Architecture (encoder / decoder):
+- Encoder/Decoder depths chosen by input dimensionality:
+  - If input_dim > 100 -> [256, 128, 64]
+  - Else if input_dim > 50 -> [128, 64, 32]
+  - Else -> [64, 32, 16]
+- Encoder: stacked `Dense` layers with `ReLU`, `BatchNormalization`, `Dropout(0.2)`, then two heads `z_mean` and `z_log_var` (both Dense of size `latent_dim`) and a sampling `Lambda` that draws z = z_mean + exp(0.5*z_log_var)*eps.
+- Decoder: mirrored stack of `Dense` layers (ReLU, BatchNorm, Dropout(0.2)), final `Dense(input_dim, activation='sigmoid')` output.
+
+Latent space and sizing:
+- Default `latent_dim` = 6, but training sets `latent_dim = min(12, max(3, input_dim // 2))`.
+
+Loss and training:
+- Custom `train_step` combining:
+  - Reconstruction loss: MeanSquaredError (MSE) averaged across batch.
+  - KL divergence: -0.5 * mean(1 + z_log_var - z_mean^2 - exp(z_log_var)).
+  - Total loss = recon_loss + kl_loss (cast to float32).
+- Optimizer: Adam with learning_rate=1e-4 (model compiled with this optimizer).
+- Training strategy in notebook:
+  - Uses 5-fold `KFold` for fold-wise training loops (example fold training in `train_and_evaluate_model`).
+  - Batch size used for training in main flow: 64.
+  - Epochs: per-notebook examples use 50 epochs (KFold and final training calls use 50 epochs in examples).
+
+Performance & post-processing:
+- Mixed precision enabled: global policy `mixed_float16` when GPUs are available.
+- Preprocessing: features scaled with `MaxAbsScaler`; scaler saved to `models/scaler.pkl`.
+- After training, encoder/decoder saved as `models/layer1_encoder_{timestamp}.tf` and `models/layer1_decoder_{timestamp}.tf`.
+- Anomaly threshold: adaptive threshold computed from reconstruction errors using `sklearn.neighbors.KernelDensity(kernel='gaussian', bandwidth=0.1)`; threshold chosen as 95th percentile of KDE samples (10k samples).
+- Outputs saved: plots in `plots/` (feature distributions, correlation, reconstruction error distribution) and report in `reports/layer1_report_{timestamp}.json` containing `input_dim`, `latent_dim`, and `anomaly_threshold`.
+
+Key hyperparameters (from notebook):
+- Learning rate: 1e-4
+- Batch size: 64
+- Dropout: 0.2 (in encoder/decoder)
+- Weight regularization: L2(1e-5) on Dense layers
+- KDE bandwidth (thresholding): 0.1, threshold at the 95th percentile
+
+How Phase-1 output is intended to be used:
+- The VAE reconstructs input feature vectors; reconstruction error is used for anomaly detection at Layer-1 (anomaly threshold computed adaptively). The saved encoder/decoder and scaler are intended for inference or downstream feature extraction.
+
+Locations in repo (examples from the notebook):
+- Notebook: `Adaptive-Network-Intrusion-Detection-System/Layer_1_iteration_3_ii/code.ipynb`
+- Training data referenced: `Adaptive-Network-Intrusion-Detection-System/Layer_1_iteration_3/layer1_training_data.csv`
+- Saved models & artifacts: `models/`, `plots/`, `reports/` (relative to notebook run directory)

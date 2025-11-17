@@ -73,6 +73,8 @@ import os
 import sys
 import logging
 import warnings
+import time
+import psutil
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, Dict, List, Tuple, Any
@@ -81,7 +83,7 @@ from typing import Optional, Dict, List, Tuple, Any
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import classification_report, confusion_matrix, roc_curve, auc
 from sklearn.preprocessing import LabelEncoder
 import joblib
 import matplotlib.pyplot as plt
@@ -137,31 +139,69 @@ class XGBoostTrainingPipeline:
         self.training_metrics = {}
         self.label_encoder = LabelEncoder()
         
+        # Performance tracking
+        self.training_time = 0.0
+        self.inference_time = 0.0
+        self.peak_memory_usage = 0.0
+        self.gpu_memory_allocated = 0.0
+        self.gpu_memory_reserved = 0.0
+        
+        # Verify GPU availability for XGBoost
+        self._verify_gpu_availability()
+        
         # Setup directories
         self.setup_directories()
         
         # Setup logging
         self.setup_logging()
         
-        logger.info("XGBoost Training Pipeline initialized")
+        logger.info("XGBoost GPU Training Pipeline initialized")
+    
+    def _verify_gpu_availability(self) -> None:
+        """Verify GPU availability for XGBoost training."""
+        import torch
+        
+        if not torch.cuda.is_available():
+            raise RuntimeError("CUDA is not available! This script requires GPU for XGBoost.")
+        
+        logger.info("=" * 70)
+        logger.info("GPU VERIFICATION FOR XGBOOST")
+        logger.info("=" * 70)
+        logger.info(f"✓ CUDA Available: {torch.cuda.is_available()}")
+        logger.info(f"✓ PyTorch Version: {torch.__version__}")
+        
+        # Force GPU usage in XGBoost config (XGBoost 3.1+ uses 'device' with tree_method='hist')
+        self.config.tree_method = 'hist'  # Changed from 'gpu_hist' to 'hist' for XGBoost 3.1+
+        self.config.gpu_id = 0  # This will be converted to device='cuda:0' in to_xgboost_params()
+        logger.info(f"✓ XGBoost tree_method set to: {self.config.tree_method}")
+        logger.info(f"✓ XGBoost will use GPU (device=cuda:0)")
+        logger.info("=" * 70)
         
     def setup_directories(self) -> None:
-        """Create necessary directories for outputs."""
+        """Create necessary directories for outputs with timestamp."""
+        base_dir = Path(__file__).parent.parent
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        
+        self.results_dir = base_dir / "results" / f"results_{timestamp}"
+        self.results_dir.mkdir(parents=True, exist_ok=True)
+        
         directories = [
             Path(self.config.export_path).parent,
-            Path("logs"),
-            Path("outputs"),
-            Path("plots")
+            base_dir / "logs",
+            self.results_dir
         ]
         
         for directory in directories:
             directory.mkdir(parents=True, exist_ok=True)
+        
+        logger.info(f"Results will be saved to: {self.results_dir}")
             
     def setup_logging(self) -> None:
         """Setup logging configuration."""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        log_filename = f"xgboost_training_{timestamp}.log"
-        log_path = Path("logs") / log_filename
+        base_dir = Path(__file__).parent.parent
+        log_filename = f"xgboost_gpu_training_{timestamp}.log"
+        log_path = base_dir / "logs" / log_filename
         
         # Create file handler
         file_handler = logging.FileHandler(log_path)
@@ -335,6 +375,20 @@ class XGBoostTrainingPipeline:
         """
         logger.info("Starting XGBoost model training...")
         
+        # Start tracking training time and memory
+        training_start_time = time.time()
+        process = psutil.Process(os.getpid())
+        initial_memory = process.memory_info().rss / 1024 / 1024  # MB
+        
+        # Clear GPU cache if using PyTorch
+        try:
+            import torch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                torch.cuda.reset_peak_memory_stats()
+        except ImportError:
+            pass
+        
         # Create and train model
         model = XGBoostWithSoftmax(self.config)
         model.feature_names = feature_names
@@ -346,7 +400,29 @@ class XGBoostTrainingPipeline:
             verbose=True
         )
         
+        # Calculate training time
+        training_end_time = time.time()
+        self.training_time = training_end_time - training_start_time
+        
+        # Calculate peak memory usage
+        final_memory = process.memory_info().rss / 1024 / 1024  # MB
+        self.peak_memory_usage = final_memory - initial_memory
+        
+        # Get GPU memory usage if available
+        try:
+            import torch
+            if torch.cuda.is_available():
+                self.gpu_memory_allocated = torch.cuda.max_memory_allocated() / 1024 / 1024  # MB
+                self.gpu_memory_reserved = torch.cuda.max_memory_reserved() / 1024 / 1024  # MB
+        except ImportError:
+            pass
+        
         logger.info("Model training completed successfully")
+        logger.info(f"Training time: {self.training_time:.2f} seconds ({self.training_time/60:.2f} minutes)")
+        logger.info(f"Peak CPU memory usage: {self.peak_memory_usage:.2f} MB")
+        if self.gpu_memory_allocated > 0:
+            logger.info(f"Peak GPU memory allocated: {self.gpu_memory_allocated:.2f} MB")
+            logger.info(f"Peak GPU memory reserved: {self.gpu_memory_reserved:.2f} MB")
         
         return model
         
@@ -365,12 +441,38 @@ class XGBoostTrainingPipeline:
         """
         logger.info("Evaluating model performance...")
         
+        # Start tracking inference time
+        inference_start_time = time.time()
+        
         # Get predictions
         y_pred = model.predict(X_test)
         y_proba = model.predict_proba(X_test)
         
+        # Calculate inference time
+        inference_end_time = time.time()
+        self.inference_time = inference_end_time - inference_start_time
+        
+        # Calculate inference metrics
+        num_samples = len(X_test)
+        avg_inference_time_per_sample = (self.inference_time / num_samples) * 1000  # ms
+        throughput = num_samples / self.inference_time  # samples/sec
+        
+        logger.info(f"Inference time: {self.inference_time:.4f} seconds")
+        logger.info(f"Average inference time per sample: {avg_inference_time_per_sample:.4f} ms")
+        logger.info(f"Throughput: {throughput:.2f} samples/second")
+        
         # Calculate metrics
         metrics = model.evaluate(X_test, y_test, verbose=True)
+        
+        # Add performance metrics
+        metrics['inference_time_total'] = self.inference_time
+        metrics['inference_time_per_sample_ms'] = avg_inference_time_per_sample
+        metrics['throughput_samples_per_sec'] = throughput
+        metrics['training_time_total'] = self.training_time
+        metrics['training_time_minutes'] = self.training_time / 60
+        metrics['peak_cpu_memory_mb'] = self.peak_memory_usage
+        metrics['peak_gpu_memory_allocated_mb'] = self.gpu_memory_allocated
+        metrics['peak_gpu_memory_reserved_mb'] = self.gpu_memory_reserved
         
         # Generate classification report
         class_report = classification_report(y_test, y_pred, output_dict=True)
@@ -392,22 +494,28 @@ class XGBoostTrainingPipeline:
         return evaluation_results
         
     def generate_plots(self, model: XGBoostWithSoftmax, 
-                      evaluation_results: Dict[str, Any]) -> None:
+                      evaluation_results: Dict[str, Any],
+                      X_test: np.ndarray,
+                      y_test: np.ndarray) -> None:
         """
         Generate and save visualization plots.
         
         Args:
             model (XGBoostWithSoftmax): Trained model
             evaluation_results (Dict[str, Any]): Evaluation results
+            X_test (np.ndarray): Test features
+            y_test (np.ndarray): Test labels
         """
         logger.info("Generating visualization plots...")
         
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        # Use results directory
+        plots_dir = self.results_dir / "plots"
+        plots_dir.mkdir(parents=True, exist_ok=True)
         
         # 1. Feature Importance Plot
         try:
             fig = model.plot_feature_importance(top_n=20)
-            plt.savefig(f"plots/feature_importance_{timestamp}.png", dpi=300, bbox_inches='tight')
+            plt.savefig(plots_dir / "feature_importance.png", dpi=300, bbox_inches='tight')
             plt.close()
             logger.info("Feature importance plot saved")
         except Exception as e:
@@ -418,49 +526,207 @@ class XGBoostTrainingPipeline:
             conf_matrix = np.array(evaluation_results['confusion_matrix'])
             plt.figure(figsize=(10, 8))
             sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues')
-            plt.title('Confusion Matrix')
+            plt.title('Confusion Matrix - XGBoost GPU')
             plt.ylabel('True Label')
             plt.xlabel('Predicted Label')
-            plt.savefig(f"plots/confusion_matrix_{timestamp}.png", dpi=300, bbox_inches='tight')
+            plt.savefig(plots_dir / "confusion_matrix.png", dpi=300, bbox_inches='tight')
             plt.close()
             logger.info("Confusion matrix plot saved")
         except Exception as e:
             logger.warning(f"Could not generate confusion matrix plot: {e}")
             
+        # 3. ROC Curves
+        try:
+            y_proba = model.predict_proba(X_test)
+            n_classes = y_proba.shape[1]
+            
+            # Compute ROC curve and ROC area for each class
+            fpr = dict()
+            tpr = dict()
+            roc_auc = dict()
+            
+            # Binarize the output for multi-class ROC
+            from sklearn.preprocessing import label_binarize
+            y_test_bin = label_binarize(y_test, classes=np.arange(n_classes))
+            
+            for i in range(n_classes):
+                fpr[i], tpr[i], _ = roc_curve(y_test_bin[:, i], y_proba[:, i])
+                roc_auc[i] = auc(fpr[i], tpr[i])
+            
+            # Plot all ROC curves
+            plt.figure(figsize=(10, 8))
+            colors = ['blue', 'red', 'green', 'orange', 'purple', 'brown', 'pink', 'gray', 'cyan', 'magenta']
+            
+            for i in range(n_classes):
+                plt.plot(fpr[i], tpr[i], color=colors[i % len(colors)], lw=2,
+                        label=f'Class {i} (AUC = {roc_auc[i]:.4f})')
+            
+            plt.plot([0, 1], [0, 1], 'k--', lw=2, label='Random Classifier')
+            plt.xlim([0.0, 1.0])
+            plt.ylim([0.0, 1.05])
+            plt.xlabel('False Positive Rate')
+            plt.ylabel('True Positive Rate')
+            plt.title('ROC Curves - XGBoost GPU Multi-class Classification')
+            plt.legend(loc="lower right")
+            plt.grid(alpha=0.3)
+            plt.savefig(plots_dir / "roc_curves.png", dpi=300, bbox_inches='tight')
+            plt.close()
+            logger.info("ROC curves saved")
+        except Exception as e:
+            logger.warning(f"Could not generate ROC curves: {e}")
+            
+        # 4. Training History Plot
+        try:
+            if 'training_history' in evaluation_results and evaluation_results['training_history']:
+                history = evaluation_results['training_history']
+                
+                fig, axes = plt.subplots(2, 2, figsize=(15, 10))
+                fig.suptitle('XGBoost GPU Training History', fontsize=16)
+                
+                # Plot training metrics if available
+                if 'train' in history:
+                    train_metrics = history['train']
+                    iterations = range(len(train_metrics))
+                    
+                    axes[0, 0].plot(iterations, train_metrics, label='Training')
+                    if 'validation' in history:
+                        axes[0, 0].plot(iterations, history['validation'], label='Validation')
+                    axes[0, 0].set_xlabel('Iteration')
+                    axes[0, 0].set_ylabel('Loss')
+                    axes[0, 0].set_title('Training Progress')
+                    axes[0, 0].legend()
+                    axes[0, 0].grid(alpha=0.3)
+                
+                plt.tight_layout()
+                plt.savefig(plots_dir / "training_history.png", dpi=300, bbox_inches='tight')
+                plt.close()
+                logger.info("Training history plot saved")
+        except Exception as e:
+            logger.warning(f"Could not generate training history plot: {e}")
+            
     def save_results(self, model: XGBoostWithSoftmax, 
-                    evaluation_results: Dict[str, Any]) -> None:
+                    evaluation_results: Dict[str, Any],
+                    y_test: np.ndarray,
+                    y_pred: np.ndarray) -> None:
         """
         Save model and results.
         
         Args:
             model (XGBoostWithSoftmax): Trained model
             evaluation_results (Dict[str, Any]): Evaluation results
+            y_test (np.ndarray): True test labels
+            y_pred (np.ndarray): Predicted test labels
         """
         logger.info("Saving model and results...")
         
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        
         # Save model
-        model_path = Path(self.config.export_path).with_suffix('.joblib')
+        model_path = self.results_dir / "xgboost_model.joblib"
         model.save(model_path)
-        
-        # Save final model with timestamp
-        final_model_path = model_path.parent / f"{model_path.stem}_final_{timestamp}.joblib"
-        model.save(final_model_path)
+        logger.info(f"Model saved to: {model_path}")
         
         # Save evaluation results
-        results_path = Path("outputs") / f"evaluation_results_{timestamp}.joblib"
+        results_path = self.results_dir / "evaluation_results.joblib"
         joblib.dump(evaluation_results, results_path)
+        logger.info(f"Evaluation results saved to: {results_path}")
         
-        # Save metrics as CSV
-        metrics_df = pd.DataFrame([evaluation_results['metrics']])
-        metrics_csv_path = Path("logs") / f"training_metrics_{timestamp}.csv"
-        metrics_df.to_csv(metrics_csv_path, index=False)
+        # Save classification report as TXT
+        report_txt_path = self.results_dir / "classification_report.txt"
+        class_report = classification_report(y_test, y_pred)
+        with open(report_txt_path, 'w') as f:
+            f.write("XGBoost GPU Classification Report\n")
+            f.write("=" * 60 + "\n\n")
+            f.write(class_report)
+        logger.info(f"Classification report saved to: {report_txt_path}")
         
-        logger.info(f"Model saved to: {model_path}")
-        logger.info(f"Final model saved to: {final_model_path}")
-        logger.info(f"Results saved to: {results_path}")
-        logger.info(f"Metrics saved to: {metrics_csv_path}")
+        # Save detailed classification metrics as CSV
+        class_report_dict = classification_report(y_test, y_pred, output_dict=True)
+        
+        # Create detailed metrics DataFrame
+        metrics_data = []
+        for class_label, metrics in class_report_dict.items():
+            if class_label not in ['accuracy', 'macro avg', 'weighted avg']:
+                metrics_data.append({
+                    'Class': class_label,
+                    'Precision': metrics['precision'],
+                    'Recall': metrics['recall'],
+                    'F1-Score': metrics['f1-score'],
+                    'Support': metrics['support']
+                })
+        
+        # Add overall metrics
+        metrics_data.append({
+            'Class': 'Overall',
+            'Precision': class_report_dict['macro avg']['precision'],
+            'Recall': class_report_dict['macro avg']['recall'],
+            'F1-Score': class_report_dict['macro avg']['f1-score'],
+            'Support': class_report_dict['macro avg']['support']
+        })
+        
+        metrics_df = pd.DataFrame(metrics_data)
+        metrics_csv_path = self.results_dir / "classification_metrics.csv"
+        metrics_df.to_csv(metrics_csv_path, index=False, float_format='%.16f')
+        logger.info(f"Classification metrics saved to: {metrics_csv_path}")
+        
+        # Save performance metrics CSV
+        performance_data = [{
+            'Metric': 'Training Time (seconds)',
+            'Value': f"{self.training_time:.4f}"
+        }, {
+            'Metric': 'Training Time (minutes)',
+            'Value': f"{self.training_time / 60:.4f}"
+        }, {
+            'Metric': 'Inference Time (seconds)',
+            'Value': f"{self.inference_time:.4f}"
+        }, {
+            'Metric': 'Inference Time per Sample (ms)',
+            'Value': f"{evaluation_results['metrics']['inference_time_per_sample_ms']:.4f}"
+        }, {
+            'Metric': 'Throughput (samples/sec)',
+            'Value': f"{evaluation_results['metrics']['throughput_samples_per_sec']:.2f}"
+        }, {
+            'Metric': 'Peak CPU Memory Usage (MB)',
+            'Value': f"{self.peak_memory_usage:.2f}"
+        }, {
+            'Metric': 'Peak GPU Memory Allocated (MB)',
+            'Value': f"{self.gpu_memory_allocated:.2f}"
+        }, {
+            'Metric': 'Peak GPU Memory Reserved (MB)',
+            'Value': f"{self.gpu_memory_reserved:.2f}"
+        }]
+        
+        performance_df = pd.DataFrame(performance_data)
+        performance_csv_path = self.results_dir / "performance_metrics.csv"
+        performance_df.to_csv(performance_csv_path, index=False)
+        logger.info(f"Performance metrics saved to: {performance_csv_path}")
+        
+        # Save training metrics summary
+        summary_path = self.results_dir / "training_summary.txt"
+        with open(summary_path, 'w') as f:
+            f.write("XGBoost GPU Training Summary\n")
+            f.write("=" * 60 + "\n\n")
+            
+            f.write("PERFORMANCE METRICS\n")
+            f.write("-" * 60 + "\n")
+            f.write(f"Training Time: {self.training_time:.4f} seconds ({self.training_time/60:.4f} minutes)\n")
+            f.write(f"Inference Time: {self.inference_time:.4f} seconds\n")
+            f.write(f"Inference Time per Sample: {evaluation_results['metrics']['inference_time_per_sample_ms']:.4f} ms\n")
+            f.write(f"Throughput: {evaluation_results['metrics']['throughput_samples_per_sec']:.2f} samples/second\n\n")
+            
+            f.write("Memory Usage:\n")
+            f.write(f"  Peak CPU Memory: {self.peak_memory_usage:.2f} MB\n")
+            if self.gpu_memory_allocated > 0:
+                f.write(f"  Peak GPU Memory Allocated: {self.gpu_memory_allocated:.2f} MB\n")
+                f.write(f"  Peak GPU Memory Reserved: {self.gpu_memory_reserved:.2f} MB\n")
+            f.write("\n")
+            
+            f.write("CLASSIFICATION METRICS\n")
+            f.write("-" * 60 + "\n")
+            f.write(f"Test Accuracy: {evaluation_results['metrics']['accuracy']:.4f}\n")
+            f.write(f"Precision (Macro): {evaluation_results['metrics']['precision_macro']:.4f}\n")
+            f.write(f"Recall (Macro): {evaluation_results['metrics']['recall_macro']:.4f}\n")
+            f.write(f"F1-Score (Macro): {evaluation_results['metrics']['f1_macro']:.4f}\n")
+            f.write(f"F1-Score (Weighted): {evaluation_results['metrics']['f1_weighted']:.4f}\n")
+        logger.info(f"Training summary saved to: {summary_path}")
         
     def run_training(self, data_path: str) -> Dict[str, Any]:
         """
@@ -474,7 +740,7 @@ class XGBoostTrainingPipeline:
         """
         try:
             logger.info("=" * 50)
-            logger.info("STARTING XGBOOST TRAINING PIPELINE")
+            logger.info("STARTING XGBOOST GPU TRAINING PIPELINE")
             logger.info("=" * 50)
             
             # Step 1: Load and validate data
@@ -492,11 +758,14 @@ class XGBoostTrainingPipeline:
             # Step 5: Evaluate model
             evaluation_results = self.evaluate_model(self.model, X_test, y_test)
             
+            # Get predictions for plots and saving
+            y_pred = self.model.predict(X_test)
+            
             # Step 6: Generate plots
-            self.generate_plots(self.model, evaluation_results)
+            self.generate_plots(self.model, evaluation_results, X_test, y_test)
             
             # Step 7: Save results
-            self.save_results(self.model, evaluation_results)
+            self.save_results(self.model, evaluation_results, y_test, y_pred)
             
             logger.info("=" * 50)
             logger.info("TRAINING PIPELINE COMPLETED SUCCESSFULLY")
@@ -549,9 +818,20 @@ def main():
         print("\n" + "=" * 60)
         print("TRAINING COMPLETED SUCCESSFULLY!")
         print("=" * 60)
+        print("\n--- PERFORMANCE METRICS ---")
+        print(f"Training Time: {pipeline.training_time:.2f} seconds ({pipeline.training_time/60:.2f} minutes)")
+        print(f"Inference Time: {pipeline.inference_time:.4f} seconds")
+        print(f"Inference Time per Sample: {results['metrics']['inference_time_per_sample_ms']:.4f} ms")
+        print(f"Throughput: {results['metrics']['throughput_samples_per_sec']:.2f} samples/second")
+        print(f"\nPeak CPU Memory Usage: {pipeline.peak_memory_usage:.2f} MB")
+        if pipeline.gpu_memory_allocated > 0:
+            print(f"Peak GPU Memory Allocated: {pipeline.gpu_memory_allocated:.2f} MB")
+            print(f"Peak GPU Memory Reserved: {pipeline.gpu_memory_reserved:.2f} MB")
+        print("\n--- CLASSIFICATION METRICS ---")
         print(f"Final Test Accuracy: {results['metrics']['accuracy']:.4f}")
         print(f"F1-Score (Macro): {results['metrics']['f1_macro']:.4f}")
         print(f"F1-Score (Weighted): {results['metrics']['f1_weighted']:.4f}")
+        print(f"\nResults saved to: {pipeline.results_dir}")
         print(f"Log saved to: logs/{pipeline.log_filename}")
         print("=" * 60)
         

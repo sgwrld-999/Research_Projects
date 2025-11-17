@@ -1092,3 +1092,796 @@ weighted avg       1.00      1.00      1.00     99975
 2025-09-14 18:27:09,471 - __main__ - INFO - Model evaluation and plotting completed successfully
 2025-09-14 18:27:09,552 - __main__ - INFO - Final model saved to: /fab3/btech/2022/siddhant.gond22b@iiitg.ac.in/Project_3/GRU/models/saved_Models/gru_experiment2_final.keras
 2025-09-14 18:27:09,552 - __main__ - INFO - Training pipeline completed successfully!
+2025-10-23 14:38:46,785 - __main__ - INFO - Training session started at 2025-10-23 14:38:46
+2025-10-23 14:38:46,785 - __main__ - INFO - Session logs will be saved to: gru_training_20251023-143846.log
+2025-10-23 14:38:46,785 - __main__ - INFO - Configuration loaded successfully
+2025-10-23 14:38:46,785 - __main__ - INFO - Model configuration:
+GRU Model Configuration Summary:
+================================
+Architecture:
+  - Input: 128 time steps × 14 features
+  - 4x Bidirectional GRU layers (32 units each)
+  - Output: 5 classes
+  - Estimated parameters: ~86,853
+
+Training Setup:
+  - Learning rate: 0.001
+  - Batch size: 64
+  - Max epochs: 15
+  - Dropout: 0.3
+  - Validation split: 0.2
+  - Early stopping patience: 2
+
+Monitoring:
+  - Metrics: accuracy, precision, recall, f1_score
+  - Model save path: \fab3\btech\2022\siddhant.gond22b@iiitg.ac.in\Project_3\GRU\models\saved_Models\gru_experiment2.keras
+2025-10-23 14:38:46,785 - __main__ - ERROR - Data file not found: \fab3\btech\2022\siddhant.gond22b@iiitg.ac.in\Research_Internship_Under_Dr_Rakesh_Matam\Project_3\dataset\combined_dataset_short_balanced_encoded_normalised.csv
+2025-10-23 14:38:46,785 - __main__ - INFO - Please place your CSV data file in the correct location
+2025-10-23 14:39:32,155 - __main__ - INFO - Training session started at 2025-10-23 14:39:32
+2025-10-23 14:39:32,156 - __main__ - INFO - Session logs will be saved to: gru_training_20251023-143932.log
+2025-10-23 14:39:32,160 - __main__ - INFO - Configuration loaded successfully
+2025-10-23 14:39:32,161 - __main__ - INFO - Model configuration:
+GRU Model Configuration Summary:
+================================
+Architecture:
+  - Input: 128 time steps × 14 features
+  - 4x Bidirectional GRU layers (32 units each)
+  - Output: 5 classes
+  - Estimated parameters: ~86,853
+
+Training Setup:
+  - Learning rate: 0.001
+  - Batch size: 64
+  - Max epochs: 15
+  - Dropout: 0.3
+  - Validation split: 0.2
+  - Early stopping patience: 2
+
+Monitoring:
+  - Metrics: accuracy, precision, recall, f1_score
+  - Model save path: \fab3\btech\2022\siddhant.gond22b@iiitg.ac.in\Project_3\GRU\models\saved_Models\gru_experiment2.keras
+2025-10-23 14:39:32,161 - __main__ - ERROR - Data file not found: \fab3\btech\2022\siddhant.gond22b@iiitg.ac.in\Research_Internship_Under_Dr_Rakesh_Matam\Project_3\dataset\combined_dataset_short_balanced_encoded_normalised.csv
+2025-10-23 14:39:32,161 - __main__ - INFO - Please place your CSV data file in the correct location
+2025-10-23 14:40:31,676 - __main__ - INFO - Training session started at 2025-10-23 14:40:31
+2025-10-23 14:40:31,677 - __main__ - INFO - Session logs will be saved to: gru_training_20251023-144031.log
+2025-10-23 14:40:31,680 - __main__ - INFO - Configuration loaded successfully
+2025-10-23 14:40:31,680 - __main__ - INFO - Model configuration:
+GRU Model Configuration Summary:
+================================
+Architecture:
+  - Input: 128 time steps × 14 features
+  - 4x Bidirectional GRU layers (32 units each)
+  - Output: 5 classes
+  - Estimated parameters: ~86,853
+
+Training Setup:
+  - Learning rate: 0.001
+  - Batch size: 64
+  - Max epochs: 15
+  - Dropout: 0.3
+  - Validation split: 0.2
+  - Early stopping patience: 2
+
+Monitoring:
+  - Metrics: accuracy, precision, recall, f1_score
+  - Model save path: \fab3\btech\2022\siddhant.gond22b@iiitg.ac.in\Project_3\GRU\models\saved_Models\gru_experiment2.keras
+2025-10-23 14:40:31,681 - __main__ - INFO - Loading data from C:\Users\abhay\OneDrive\Desktop\SID\Research_Internship_Under_Dr_Rakesh_Matam\Project_3\dataset\combined_dataset_short_balanced_encoded_normalised.csv
+2025-10-23 14:40:32,424 - __main__ - INFO - Data loaded successfully: (500000, 15)
+2025-10-23 14:40:32,424 - __main__ - INFO - Features: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13']
+2025-10-23 14:40:32,424 - __main__ - INFO - Target: label_stage_encoded
+2025-10-23 14:40:32,425 - __main__ - INFO - Preparing preprocessed data for GRU training...
+2025-10-23 14:40:32,462 - __main__ - INFO - Feature matrix shape: (500000, 14)
+2025-10-23 14:40:32,462 - __main__ - INFO - Target vector shape: (500000,)
+2025-10-23 14:40:32,466 - __main__ - INFO - Creating sequences with optimized vectorization...
+2025-10-23 14:40:32,658 - __main__ - INFO - Processed 50000/499873 sequences (10.0%)
+2025-10-23 14:40:32,869 - __main__ - INFO - Processed 100000/499873 sequences (20.0%)
+2025-10-23 14:40:33,080 - __main__ - INFO - Processed 150000/499873 sequences (30.0%)
+2025-10-23 14:40:33,364 - __main__ - INFO - Processed 200000/499873 sequences (40.0%)
+2025-10-23 14:40:33,564 - __main__ - INFO - Processed 250000/499873 sequences (50.0%)
+2025-10-23 14:40:33,772 - __main__ - INFO - Processed 300000/499873 sequences (60.0%)
+2025-10-23 14:40:33,972 - __main__ - INFO - Processed 350000/499873 sequences (70.0%)
+2025-10-23 14:40:34,168 - __main__ - INFO - Processed 400000/499873 sequences (80.0%)
+2025-10-23 14:40:34,354 - __main__ - INFO - Processed 450000/499873 sequences (90.0%)
+2025-10-23 14:40:34,546 - __main__ - INFO - Created 499873 sequences of length 128
+2025-10-23 14:40:34,546 - __main__ - INFO - Sequence shape: (499873, 128, 14)
+2025-10-23 14:40:34,546 - __main__ - INFO - Target shape: (499873,)
+2025-10-23 14:40:34,546 - __main__ - INFO - Preprocessed data preparation completed successfully
+2025-10-23 14:40:34,546 - __main__ - INFO - Final sequence shape: (499873, 128, 14)
+2025-10-23 14:40:34,547 - __main__ - INFO - Final target shape: (499873,)
+2025-10-23 14:40:34,551 - __main__ - INFO - Class distribution: [100000  99873 100000 100000 100000]
+2025-10-23 14:40:34,560 - __main__ - INFO - === CPU-ONLY MODE ENABLED ===
+2025-10-23 14:40:34,561 - __main__ - INFO - System Info: 16 CPU cores, 14.6GB available RAM
+2025-10-23 14:40:34,561 - __main__ - INFO - TensorFlow configured for CPU with 16 cores - READY FOR TRAINING!
+2025-10-23 14:40:34,563 - __main__ - INFO - Random seeds set to 42 for reproducibility
+2025-10-23 14:40:34,564 - __main__ - INFO - === CPU-ONLY MODE ENABLED ===
+2025-10-23 14:40:34,564 - __main__ - INFO - System Info: 16 CPU cores, 14.6GB available RAM
+2025-10-23 14:40:34,564 - __main__ - INFO - TensorFlow configured for CPU with 16 cores - READY FOR TRAINING!
+2025-10-23 14:40:34,565 - __main__ - INFO - Starting GRU model training...
+2025-10-23 14:40:34,565 - __main__ - INFO - Optimizing data types for performance...
+2025-10-23 14:40:34,566 - __main__ - INFO - Splitting data into training and validation sets...
+2025-10-23 14:40:36,121 - __main__ - INFO - Training samples: 399,898
+2025-10-23 14:40:36,122 - __main__ - INFO - Validation samples: 99,975
+2025-10-23 14:40:36,122 - __main__ - INFO - Building model architecture...
+2025-10-23 14:40:36,317 - tensorflow - INFO - precision metric will be calculated manually during evaluation
+2025-10-23 14:40:36,318 - tensorflow - INFO - recall metric will be calculated manually during evaluation
+2025-10-23 14:40:36,319 - tensorflow - INFO - f1_score metric will be calculated manually during evaluation
+2025-10-23 14:40:36,322 - __main__ - INFO - Model built successfully in 0.20 seconds
+2025-10-23 14:40:36,345 - __main__ - INFO - Setting up training callbacks...
+2025-10-23 14:40:36,347 - __main__ - INFO - === STARTING TRAINING PROCESS ===
+2025-10-23 14:40:36,347 - __main__ - INFO - Device: CPU
+2025-10-23 14:40:36,347 - __main__ - INFO - Batch size: 64
+2025-10-23 14:40:36,347 - __main__ - INFO - Total batches per epoch: 6248
+2025-10-23 14:43:51,055 - __main__ - INFO - Training session started at 2025-10-23 14:43:51
+2025-10-23 14:43:51,056 - __main__ - INFO - Session logs will be saved to: gru_training_20251023-144351.log
+2025-10-23 14:43:51,060 - __main__ - INFO - Configuration loaded successfully
+2025-10-23 14:43:51,060 - __main__ - INFO - Model configuration:
+GRU Model Configuration Summary:
+================================
+Architecture:
+  - Input: 128 time steps × 14 features
+  - 4x Bidirectional GRU layers (32 units each)
+  - Output: 5 classes
+  - Estimated parameters: ~86,853
+
+Training Setup:
+  - Learning rate: 0.001
+  - Batch size: 64
+  - Max epochs: 15
+  - Dropout: 0.3
+  - Validation split: 0.2
+  - Early stopping patience: 2
+
+Monitoring:
+  - Metrics: accuracy, precision, recall, f1_score
+  - Model save path: \fab3\btech\2022\siddhant.gond22b@iiitg.ac.in\Project_3\GRU\models\saved_Models\gru_experiment2.keras
+2025-10-23 14:43:51,061 - __main__ - INFO - Loading data from C:\Users\abhay\OneDrive\Desktop\SID\Research_Internship_Under_Dr_Rakesh_Matam\Project_3\dataset\combined_dataset_short_balanced_encoded_normalised.csv
+2025-10-23 14:43:51,780 - __main__ - INFO - Data loaded successfully: (500000, 15)
+2025-10-23 14:43:51,780 - __main__ - INFO - Features: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13']
+2025-10-23 14:43:51,780 - __main__ - INFO - Target: label_stage_encoded
+2025-10-23 14:43:51,781 - __main__ - INFO - Preparing preprocessed data for GRU training...
+2025-10-23 14:43:51,809 - __main__ - INFO - Feature matrix shape: (500000, 14)
+2025-10-23 14:43:51,810 - __main__ - INFO - Target vector shape: (500000,)
+2025-10-23 14:43:51,812 - __main__ - INFO - Creating sequences with optimized vectorization...
+2025-10-23 14:43:51,970 - __main__ - INFO - Processed 50000/499873 sequences (10.0%)
+2025-10-23 14:43:52,117 - __main__ - INFO - Processed 100000/499873 sequences (20.0%)
+2025-10-23 14:43:52,276 - __main__ - INFO - Processed 150000/499873 sequences (30.0%)
+2025-10-23 14:43:52,444 - __main__ - INFO - Processed 200000/499873 sequences (40.0%)
+2025-10-23 14:43:52,590 - __main__ - INFO - Processed 250000/499873 sequences (50.0%)
+2025-10-23 14:43:52,765 - __main__ - INFO - Processed 300000/499873 sequences (60.0%)
+2025-10-23 14:43:52,934 - __main__ - INFO - Processed 350000/499873 sequences (70.0%)
+2025-10-23 14:43:53,082 - __main__ - INFO - Processed 400000/499873 sequences (80.0%)
+2025-10-23 14:43:53,243 - __main__ - INFO - Processed 450000/499873 sequences (90.0%)
+2025-10-23 14:43:53,448 - __main__ - INFO - Created 499873 sequences of length 128
+2025-10-23 14:43:53,449 - __main__ - INFO - Sequence shape: (499873, 128, 14)
+2025-10-23 14:43:53,450 - __main__ - INFO - Target shape: (499873,)
+2025-10-23 14:43:53,450 - __main__ - INFO - Preprocessed data preparation completed successfully
+2025-10-23 14:43:53,451 - __main__ - INFO - Final sequence shape: (499873, 128, 14)
+2025-10-23 14:43:53,451 - __main__ - INFO - Final target shape: (499873,)
+2025-10-23 14:43:53,463 - __main__ - INFO - Class distribution: [100000  99873 100000 100000 100000]
+2025-10-23 14:43:53,475 - __main__ - WARNING - === NO GPU DETECTED ===
+2025-10-23 14:43:53,476 - __main__ - WARNING - Training will run on CPU (slower performance)
+2025-10-23 14:43:53,476 - __main__ - INFO - System Info: 16 CPU cores, 14.7GB available RAM
+2025-10-23 14:43:53,477 - __main__ - INFO - Random seeds set to 42 for reproducibility
+2025-10-23 14:43:53,477 - __main__ - WARNING - === NO GPU DETECTED ===
+2025-10-23 14:43:53,478 - __main__ - WARNING - Training will run on CPU (slower performance)
+2025-10-23 14:43:53,478 - __main__ - INFO - System Info: 16 CPU cores, 14.7GB available RAM
+2025-10-23 14:43:53,479 - __main__ - INFO - Starting GRU model training...
+2025-10-23 14:43:53,479 - __main__ - INFO - Optimizing data types for performance...
+2025-10-23 14:43:53,479 - __main__ - INFO - Splitting data into training and validation sets...
+2025-10-23 14:43:54,953 - __main__ - INFO - Training samples: 399,898
+2025-10-23 14:43:54,953 - __main__ - INFO - Validation samples: 99,975
+2025-10-23 14:43:54,954 - __main__ - INFO - Building model architecture...
+2025-10-23 14:43:55,159 - tensorflow - INFO - precision metric will be calculated manually during evaluation
+2025-10-23 14:43:55,159 - tensorflow - INFO - recall metric will be calculated manually during evaluation
+2025-10-23 14:43:55,160 - tensorflow - INFO - f1_score metric will be calculated manually during evaluation
+2025-10-23 14:43:55,163 - __main__ - INFO - Model built successfully in 0.21 seconds
+2025-10-23 14:43:55,185 - __main__ - INFO - Setting up training callbacks...
+2025-10-23 14:43:55,185 - __main__ - INFO - === STARTING TRAINING PROCESS ===
+2025-10-23 14:43:55,186 - __main__ - INFO - Device: CPU
+2025-10-23 14:43:55,186 - __main__ - INFO - Batch size: 64
+2025-10-23 14:43:55,186 - __main__ - INFO - Total batches per epoch: 6248
+2025-10-23 15:10:27,858 - __main__ - INFO - Training session started at 2025-10-23 15:10:27
+2025-10-23 15:10:27,859 - __main__ - INFO - Session logs will be saved to: gru_training_20251023-151027.log
+2025-10-23 15:10:27,864 - __main__ - INFO - Configuration loaded successfully
+2025-10-23 15:10:27,864 - __main__ - INFO - Model configuration:
+GRU Model Configuration Summary:
+================================
+Architecture:
+  - Input: 128 time steps × 14 features
+  - 4x Bidirectional GRU layers (32 units each)
+  - Output: 5 classes
+  - Estimated parameters: ~86,853
+
+Training Setup:
+  - Learning rate: 0.001
+  - Batch size: 64
+  - Max epochs: 15
+  - Dropout: 0.3
+  - Validation split: 0.2
+  - Early stopping patience: 2
+
+Monitoring:
+  - Metrics: accuracy, precision, recall, f1_score
+  - Model save path: \fab3\btech\2022\siddhant.gond22b@iiitg.ac.in\Project_3\GRU\models\saved_Models\gru_experiment2.keras
+2025-10-23 15:10:27,864 - __main__ - INFO - Loading data from C:\Users\abhay\OneDrive\Desktop\SID\Research_Internship_Under_Dr_Rakesh_Matam\Project_3\dataset\combined_dataset_short_balanced_encoded_normalised.csv
+2025-10-23 15:10:28,651 - __main__ - INFO - Data loaded successfully: (500000, 15)
+2025-10-23 15:10:28,652 - __main__ - INFO - Features: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13']
+2025-10-23 15:10:28,652 - __main__ - INFO - Target: label_stage_encoded
+2025-10-23 15:10:28,652 - __main__ - INFO - Preparing preprocessed data for GRU training...
+2025-10-23 15:10:28,696 - __main__ - INFO - Feature matrix shape: (500000, 14)
+2025-10-23 15:10:28,696 - __main__ - INFO - Target vector shape: (500000,)
+2025-10-23 15:10:28,700 - __main__ - INFO - Creating sequences with optimized vectorization...
+2025-10-23 15:10:28,869 - __main__ - INFO - Processed 50000/499873 sequences (10.0%)
+2025-10-23 15:10:29,052 - __main__ - INFO - Processed 100000/499873 sequences (20.0%)
+2025-10-23 15:10:29,221 - __main__ - INFO - Processed 150000/499873 sequences (30.0%)
+2025-10-23 15:10:29,382 - __main__ - INFO - Processed 200000/499873 sequences (40.0%)
+2025-10-23 15:10:29,567 - __main__ - INFO - Processed 250000/499873 sequences (50.0%)
+2025-10-23 15:10:29,723 - __main__ - INFO - Processed 300000/499873 sequences (60.0%)
+2025-10-23 15:10:29,943 - __main__ - INFO - Processed 350000/499873 sequences (70.0%)
+2025-10-23 15:10:30,136 - __main__ - INFO - Processed 400000/499873 sequences (80.0%)
+2025-10-23 15:10:30,316 - __main__ - INFO - Processed 450000/499873 sequences (90.0%)
+2025-10-23 15:10:30,485 - __main__ - INFO - Created 499873 sequences of length 128
+2025-10-23 15:10:30,485 - __main__ - INFO - Sequence shape: (499873, 128, 14)
+2025-10-23 15:10:30,485 - __main__ - INFO - Target shape: (499873,)
+2025-10-23 15:10:30,485 - __main__ - INFO - Preprocessed data preparation completed successfully
+2025-10-23 15:10:30,485 - __main__ - INFO - Final sequence shape: (499873, 128, 14)
+2025-10-23 15:10:30,485 - __main__ - INFO - Final target shape: (499873,)
+2025-10-23 15:10:30,488 - __main__ - INFO - Class distribution: [100000  99873 100000 100000 100000]
+2025-10-23 15:10:30,503 - __main__ - WARNING - === NO GPU DETECTED ===
+2025-10-23 15:10:30,503 - __main__ - WARNING - Training will run on CPU (slower performance)
+2025-10-23 15:10:30,504 - __main__ - INFO - System Info: 16 CPU cores, 13.4GB available RAM
+2025-10-23 15:10:30,506 - __main__ - INFO - Random seeds set to 42 for reproducibility
+2025-10-23 15:10:30,507 - __main__ - WARNING - === NO GPU DETECTED ===
+2025-10-23 15:10:30,507 - __main__ - WARNING - Training will run on CPU (slower performance)
+2025-10-23 15:10:30,508 - __main__ - INFO - System Info: 16 CPU cores, 13.4GB available RAM
+2025-10-23 15:10:30,508 - __main__ - INFO - Starting GRU model training...
+2025-10-23 15:10:30,509 - __main__ - INFO - Optimizing data types for performance...
+2025-10-23 15:10:30,509 - __main__ - INFO - Splitting data into training and validation sets...
+2025-10-23 15:10:32,022 - __main__ - INFO - Training samples: 399,898
+2025-10-23 15:10:32,023 - __main__ - INFO - Validation samples: 99,975
+2025-10-23 15:10:32,023 - __main__ - INFO - Building model architecture...
+2025-10-23 15:10:32,201 - tensorflow - INFO - precision metric will be calculated manually during evaluation
+2025-10-23 15:10:32,201 - tensorflow - INFO - recall metric will be calculated manually during evaluation
+2025-10-23 15:10:32,202 - tensorflow - INFO - f1_score metric will be calculated manually during evaluation
+2025-10-23 15:10:32,204 - __main__ - INFO - Model built successfully in 0.18 seconds
+2025-10-23 15:10:32,231 - __main__ - INFO - Setting up training callbacks...
+2025-10-23 15:10:32,232 - __main__ - INFO - === STARTING TRAINING PROCESS ===
+2025-10-23 15:10:32,232 - __main__ - INFO - Device: CPU
+2025-10-23 15:10:32,233 - __main__ - INFO - Batch size: 64
+2025-10-23 15:10:32,233 - __main__ - INFO - Total batches per epoch: 6248
+2025-10-23 15:14:03,103 - __main__ - INFO - Training session started at 2025-10-23 15:14:03
+2025-10-23 15:14:03,111 - __main__ - INFO - Session logs will be saved to: gru_training_20251023-151403.log
+2025-10-23 15:14:03,115 - __main__ - INFO - Configuration loaded successfully
+2025-10-23 15:14:03,115 - __main__ - INFO - Model configuration:
+GRU Model Configuration Summary:
+================================
+Architecture:
+  - Input: 128 time steps × 14 features
+  - 4x Bidirectional GRU layers (32 units each)
+  - Output: 5 classes
+  - Estimated parameters: ~86,853
+
+Training Setup:
+  - Learning rate: 0.001
+  - Batch size: 64
+  - Max epochs: 15
+  - Dropout: 0.3
+  - Validation split: 0.2
+  - Early stopping patience: 2
+
+Monitoring:
+  - Metrics: accuracy, precision, recall, f1_score
+  - Model save path: \fab3\btech\2022\siddhant.gond22b@iiitg.ac.in\Project_3\GRU\models\saved_Models\gru_experiment2.keras
+2025-10-23 15:14:03,116 - __main__ - INFO - Loading data from C:\Users\abhay\OneDrive\Desktop\SID\Research_Internship_Under_Dr_Rakesh_Matam\Project_3\dataset\combined_dataset_short_balanced_encoded_normalised.csv
+2025-10-23 15:14:03,823 - __main__ - INFO - Data loaded successfully: (500000, 15)
+2025-10-23 15:14:03,823 - __main__ - INFO - Features: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13']
+2025-10-23 15:14:03,823 - __main__ - INFO - Target: label_stage_encoded
+2025-10-23 15:14:03,824 - __main__ - INFO - Preparing preprocessed data for GRU training...
+2025-10-23 15:14:03,866 - __main__ - INFO - Feature matrix shape: (500000, 14)
+2025-10-23 15:14:03,867 - __main__ - INFO - Target vector shape: (500000,)
+2025-10-23 15:14:04,004 - __main__ - INFO - Creating sequences with optimized vectorization...
+2025-10-23 15:14:04,174 - __main__ - INFO - Processed 50000/499873 sequences (10.0%)
+2025-10-23 15:14:04,344 - __main__ - INFO - Processed 100000/499873 sequences (20.0%)
+2025-10-23 15:14:04,515 - __main__ - INFO - Processed 150000/499873 sequences (30.0%)
+2025-10-23 15:14:04,685 - __main__ - INFO - Processed 200000/499873 sequences (40.0%)
+2025-10-23 15:14:04,858 - __main__ - INFO - Processed 250000/499873 sequences (50.0%)
+2025-10-23 15:14:05,029 - __main__ - INFO - Processed 300000/499873 sequences (60.0%)
+2025-10-23 15:14:05,203 - __main__ - INFO - Processed 350000/499873 sequences (70.0%)
+2025-10-23 15:14:05,403 - __main__ - INFO - Processed 400000/499873 sequences (80.0%)
+2025-10-23 15:14:05,591 - __main__ - INFO - Processed 450000/499873 sequences (90.0%)
+2025-10-23 15:14:05,780 - __main__ - INFO - Created 499873 sequences of length 128
+2025-10-23 15:14:05,780 - __main__ - INFO - Sequence shape: (499873, 128, 14)
+2025-10-23 15:14:05,781 - __main__ - INFO - Target shape: (499873,)
+2025-10-23 15:14:05,781 - __main__ - INFO - Preprocessed data preparation completed successfully
+2025-10-23 15:14:05,781 - __main__ - INFO - Final sequence shape: (499873, 128, 14)
+2025-10-23 15:14:05,781 - __main__ - INFO - Final target shape: (499873,)
+2025-10-23 15:14:05,785 - __main__ - INFO - Class distribution: [100000  99873 100000 100000 100000]
+2025-10-23 15:14:05,791 - __main__ - WARNING - === NO GPU DETECTED ===
+2025-10-23 15:14:05,791 - __main__ - WARNING - Training will run on CPU (slower performance)
+2025-10-23 15:14:05,791 - __main__ - INFO - System Info: 16 CPU cores, 4.9GB available RAM
+2025-10-23 15:14:05,792 - __main__ - INFO - Random seeds set to 42 for reproducibility
+2025-10-23 15:14:05,792 - __main__ - WARNING - === NO GPU DETECTED ===
+2025-10-23 15:14:05,792 - __main__ - WARNING - Training will run on CPU (slower performance)
+2025-10-23 15:14:05,793 - __main__ - INFO - System Info: 16 CPU cores, 4.9GB available RAM
+2025-10-23 15:14:05,793 - __main__ - INFO - Starting GRU model training...
+2025-10-23 15:14:05,793 - __main__ - INFO - Optimizing data types for performance...
+2025-10-23 15:14:05,793 - __main__ - INFO - Splitting data into training and validation sets...
+2025-10-23 15:14:07,558 - __main__ - INFO - Training samples: 399,898
+2025-10-23 15:14:07,558 - __main__ - INFO - Validation samples: 99,975
+2025-10-23 15:14:07,559 - __main__ - INFO - Building model architecture...
+2025-10-23 15:14:07,747 - tensorflow - INFO - precision metric will be calculated manually during evaluation
+2025-10-23 15:14:07,747 - tensorflow - INFO - recall metric will be calculated manually during evaluation
+2025-10-23 15:14:07,748 - tensorflow - INFO - f1_score metric will be calculated manually during evaluation
+2025-10-23 15:14:07,750 - __main__ - INFO - Model built successfully in 0.19 seconds
+2025-10-23 15:14:07,779 - __main__ - INFO - Setting up training callbacks...
+2025-10-23 15:14:07,780 - __main__ - INFO - === STARTING TRAINING PROCESS ===
+2025-10-23 15:14:07,780 - __main__ - INFO - Device: CPU
+2025-10-23 15:14:07,780 - __main__ - INFO - Batch size: 64
+2025-10-23 15:14:07,781 - __main__ - INFO - Total batches per epoch: 6248
+2025-10-23 15:17:37,096 - __main__ - INFO - Training session started at 2025-10-23 15:17:37
+2025-10-23 15:17:37,096 - __main__ - INFO - Session logs will be saved to: gru_training_20251023-151737.log
+2025-10-23 15:17:37,099 - __main__ - INFO - Configuration loaded successfully
+2025-10-23 15:17:37,099 - __main__ - INFO - Model configuration:
+GRU Model Configuration Summary:
+================================
+Architecture:
+  - Input: 128 time steps × 14 features
+  - 4x Bidirectional GRU layers (32 units each)
+  - Output: 5 classes
+  - Estimated parameters: ~86,853
+
+Training Setup:
+  - Learning rate: 0.001
+  - Batch size: 64
+  - Max epochs: 15
+  - Dropout: 0.3
+  - Validation split: 0.2
+  - Early stopping patience: 2
+
+Monitoring:
+  - Metrics: accuracy, precision, recall, f1_score
+  - Model save path: \fab3\btech\2022\siddhant.gond22b@iiitg.ac.in\Project_3\GRU\models\saved_Models\gru_experiment2.keras
+2025-10-23 15:17:37,100 - __main__ - INFO - Loading data from C:\Users\abhay\OneDrive\Desktop\SID\Research_Internship_Under_Dr_Rakesh_Matam\Project_3\dataset\combined_dataset_short_balanced_encoded_normalised.csv
+2025-10-23 15:17:37,801 - __main__ - INFO - Data loaded successfully: (500000, 15)
+2025-10-23 15:17:37,802 - __main__ - INFO - Features: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13']
+2025-10-23 15:17:37,802 - __main__ - INFO - Target: label_stage_encoded
+2025-10-23 15:17:37,802 - __main__ - INFO - Preparing preprocessed data for GRU training...
+2025-10-23 15:17:37,833 - __main__ - INFO - Feature matrix shape: (500000, 14)
+2025-10-23 15:17:37,834 - __main__ - INFO - Target vector shape: (500000,)
+2025-10-23 15:17:37,836 - __main__ - INFO - Creating sequences with optimized vectorization...
+2025-10-23 15:17:37,980 - __main__ - INFO - Processed 50000/499873 sequences (10.0%)
+2025-10-23 15:17:38,134 - __main__ - INFO - Processed 100000/499873 sequences (20.0%)
+2025-10-23 15:17:38,280 - __main__ - INFO - Processed 150000/499873 sequences (30.0%)
+2025-10-23 15:17:38,427 - __main__ - INFO - Processed 200000/499873 sequences (40.0%)
+2025-10-23 15:17:38,604 - __main__ - INFO - Processed 250000/499873 sequences (50.0%)
+2025-10-23 15:17:38,798 - __main__ - INFO - Processed 300000/499873 sequences (60.0%)
+2025-10-23 15:17:38,991 - __main__ - INFO - Processed 350000/499873 sequences (70.0%)
+2025-10-23 15:17:39,185 - __main__ - INFO - Processed 400000/499873 sequences (80.0%)
+2025-10-23 15:17:39,367 - __main__ - INFO - Processed 450000/499873 sequences (90.0%)
+2025-10-23 15:17:39,548 - __main__ - INFO - Created 499873 sequences of length 128
+2025-10-23 15:17:39,549 - __main__ - INFO - Sequence shape: (499873, 128, 14)
+2025-10-23 15:17:39,549 - __main__ - INFO - Target shape: (499873,)
+2025-10-23 15:17:39,549 - __main__ - INFO - Preprocessed data preparation completed successfully
+2025-10-23 15:17:39,549 - __main__ - INFO - Final sequence shape: (499873, 128, 14)
+2025-10-23 15:17:39,549 - __main__ - INFO - Final target shape: (499873,)
+2025-10-23 15:17:39,553 - __main__ - INFO - Class distribution: [100000  99873 100000 100000 100000]
+2025-10-23 15:17:39,559 - __main__ - WARNING - === NO GPU DETECTED ===
+2025-10-23 15:17:39,560 - __main__ - WARNING - Training will run on CPU (slower performance)
+2025-10-23 15:17:39,560 - __main__ - INFO - System Info: 16 CPU cores, 9.5GB available RAM
+2025-10-23 15:17:39,561 - __main__ - INFO - Random seeds set to 42 for reproducibility
+2025-10-23 15:17:39,561 - __main__ - WARNING - === NO GPU DETECTED ===
+2025-10-23 15:17:39,561 - __main__ - WARNING - Training will run on CPU (slower performance)
+2025-10-23 15:17:39,562 - __main__ - INFO - System Info: 16 CPU cores, 9.5GB available RAM
+2025-10-23 15:17:39,562 - __main__ - INFO - Starting GRU model training...
+2025-10-23 15:17:39,562 - __main__ - INFO - Optimizing data types for performance...
+2025-10-23 15:17:39,562 - __main__ - INFO - Splitting data into training and validation sets...
+2025-10-23 15:17:41,411 - __main__ - INFO - Training samples: 399,898
+2025-10-23 15:17:41,412 - __main__ - INFO - Validation samples: 99,975
+2025-10-23 15:17:41,412 - __main__ - INFO - Building model architecture...
+2025-10-23 15:17:41,584 - tensorflow - INFO - precision metric will be calculated manually during evaluation
+2025-10-23 15:17:41,585 - tensorflow - INFO - recall metric will be calculated manually during evaluation
+2025-10-23 15:17:41,585 - tensorflow - INFO - f1_score metric will be calculated manually during evaluation
+2025-10-23 15:17:41,588 - __main__ - INFO - Model built successfully in 0.18 seconds
+2025-10-23 15:17:41,614 - __main__ - INFO - Setting up training callbacks...
+2025-10-23 15:17:41,615 - __main__ - INFO - === STARTING TRAINING PROCESS ===
+2025-10-23 15:17:41,615 - __main__ - INFO - Device: CPU
+2025-10-23 15:17:41,615 - __main__ - INFO - Batch size: 64
+2025-10-23 15:17:41,615 - __main__ - INFO - Total batches per epoch: 6248
+2025-10-23 15:43:16,655 - __main__ - INFO - Training session started at 2025-10-23 15:43:16
+2025-10-23 15:43:16,655 - __main__ - INFO - Session logs will be saved to: gru_training_20251023-154316.log
+2025-10-23 15:43:16,666 - __main__ - INFO - Configuration loaded successfully
+2025-10-23 15:43:16,666 - __main__ - INFO - Model configuration:
+GRU Model Configuration Summary:
+================================
+Architecture:
+  - Input: 128 time steps × 14 features
+  - 4x Bidirectional GRU layers (32 units each)
+  - Output: 5 classes
+  - Estimated parameters: ~86,853
+
+Training Setup:
+  - Learning rate: 0.001
+  - Batch size: 64
+  - Max epochs: 15
+  - Dropout: 0.3
+  - Validation split: 0.2
+  - Early stopping patience: 2
+
+Monitoring:
+  - Metrics: accuracy, precision, recall, f1_score
+  - Model save path: \fab3\btech\2022\siddhant.gond22b@iiitg.ac.in\Project_3\GRU\models\saved_Models\gru_experiment2.keras
+2025-10-23 15:43:16,666 - __main__ - INFO - Loading data from C:\Users\abhay\OneDrive\Desktop\SID\Research_Internship_Under_Dr_Rakesh_Matam\Project_3\dataset\combined_dataset_short_balanced_encoded_normalised.csv
+2025-10-23 15:43:17,421 - __main__ - INFO - Data loaded successfully: (500000, 15)
+2025-10-23 15:43:17,421 - __main__ - INFO - Features: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13']
+2025-10-23 15:43:17,421 - __main__ - INFO - Target: label_stage_encoded
+2025-10-23 15:43:17,421 - __main__ - INFO - Preparing preprocessed data for GRU training...
+2025-10-23 15:43:17,473 - __main__ - INFO - Feature matrix shape: (500000, 14)
+2025-10-23 15:43:17,474 - __main__ - INFO - Target vector shape: (500000,)
+2025-10-23 15:43:17,477 - __main__ - INFO - Creating sequences with optimized vectorization...
+2025-10-23 15:43:17,656 - __main__ - INFO - Processed 50000/499873 sequences (10.0%)
+2025-10-23 15:43:17,853 - __main__ - INFO - Processed 100000/499873 sequences (20.0%)
+2025-10-23 15:43:18,040 - __main__ - INFO - Processed 150000/499873 sequences (30.0%)
+2025-10-23 15:43:18,224 - __main__ - INFO - Processed 200000/499873 sequences (40.0%)
+2025-10-23 15:43:18,410 - __main__ - INFO - Processed 250000/499873 sequences (50.0%)
+2025-10-23 15:43:18,571 - __main__ - INFO - Processed 300000/499873 sequences (60.0%)
+2025-10-23 15:43:18,757 - __main__ - INFO - Processed 350000/499873 sequences (70.0%)
+2025-10-23 15:43:18,939 - __main__ - INFO - Processed 400000/499873 sequences (80.0%)
+2025-10-23 15:43:19,116 - __main__ - INFO - Processed 450000/499873 sequences (90.0%)
+2025-10-23 15:43:19,288 - __main__ - INFO - Created 499873 sequences of length 128
+2025-10-23 15:43:19,288 - __main__ - INFO - Sequence shape: (499873, 128, 14)
+2025-10-23 15:43:19,288 - __main__ - INFO - Target shape: (499873,)
+2025-10-23 15:43:19,288 - __main__ - INFO - Preprocessed data preparation completed successfully
+2025-10-23 15:43:19,288 - __main__ - INFO - Final sequence shape: (499873, 128, 14)
+2025-10-23 15:43:19,288 - __main__ - INFO - Final target shape: (499873,)
+2025-10-23 15:43:19,315 - __main__ - INFO - Class distribution: [100000  99873 100000 100000 100000]
+2025-10-23 15:43:19,322 - __main__ - WARNING - === NO GPU DETECTED ===
+2025-10-23 15:43:19,322 - __main__ - WARNING - Training will run on CPU (slower performance)
+2025-10-23 15:43:19,322 - __main__ - INFO - System Info: 16 CPU cores, 9.6GB available RAM
+2025-10-23 15:43:19,322 - __main__ - INFO - Random seeds set to 42 for reproducibility
+2025-10-23 15:43:19,324 - __main__ - WARNING - === NO GPU DETECTED ===
+2025-10-23 15:43:19,324 - __main__ - WARNING - Training will run on CPU (slower performance)
+2025-10-23 15:43:19,324 - __main__ - INFO - System Info: 16 CPU cores, 9.6GB available RAM
+2025-10-23 15:43:19,325 - __main__ - INFO - Starting GRU model training...
+2025-10-23 15:43:19,325 - __main__ - INFO - Optimizing data types for performance...
+2025-10-23 15:43:19,325 - __main__ - INFO - Splitting data into training and validation sets...
+2025-10-23 15:43:21,137 - __main__ - INFO - Training samples: 399,898
+2025-10-23 15:43:21,137 - __main__ - INFO - Validation samples: 99,975
+2025-10-23 15:43:21,138 - __main__ - INFO - Building model architecture...
+2025-10-23 15:43:21,354 - tensorflow - INFO - precision metric will be calculated manually during evaluation
+2025-10-23 15:43:21,354 - tensorflow - INFO - recall metric will be calculated manually during evaluation
+2025-10-23 15:43:21,354 - tensorflow - INFO - f1_score metric will be calculated manually during evaluation
+2025-10-23 15:43:21,354 - __main__ - INFO - Model built successfully in 0.22 seconds
+2025-10-23 15:43:21,539 - __main__ - INFO - Setting up training callbacks...
+2025-10-23 15:43:21,540 - __main__ - INFO - === STARTING TRAINING PROCESS ===
+2025-10-23 15:43:21,540 - __main__ - INFO - Device: CPU
+2025-10-23 15:43:21,540 - __main__ - INFO - Batch size: 64
+2025-10-23 15:43:21,541 - __main__ - INFO - Total batches per epoch: 6248
+2025-10-23 15:48:56,104 - __main__ - INFO - Training session started at 2025-10-23 15:48:56
+2025-10-23 15:48:56,104 - __main__ - INFO - Session logs will be saved to: gru_training_20251023-154856.log
+2025-10-23 15:48:56,121 - __main__ - INFO - Configuration loaded successfully
+2025-10-23 15:48:56,121 - __main__ - INFO - Model configuration:
+GRU Model Configuration Summary:
+================================
+Architecture:
+  - Input: 128 time steps Ã— 14 features
+  - 4x Bidirectional GRU layers (32 units each)
+  - Output: 5 classes
+  - Estimated parameters: ~86,853
+
+Training Setup:
+  - Learning rate: 0.001
+  - Batch size: 64
+  - Max epochs: 15
+  - Dropout: 0.3
+  - Validation split: 0.2
+  - Early stopping patience: 2
+
+Monitoring:
+  - Metrics: accuracy, precision, recall, f1_score
+  - Model save path: \fab3\btech\2022\siddhant.gond22b@iiitg.ac.in\Project_3\GRU\models\saved_Models\gru_experiment2.keras
+2025-10-23 15:48:56,131 - __main__ - INFO - Loading data from C:\Users\abhay\OneDrive\Desktop\SID\Research_Internship_Under_Dr_Rakesh_Matam\Project_3\dataset\combined_dataset_short_balanced_encoded_normalised.csv
+2025-10-23 15:48:56,737 - __main__ - INFO - Data loaded successfully: (500000, 15)
+2025-10-23 15:48:56,737 - __main__ - INFO - Features: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13']
+2025-10-23 15:48:56,737 - __main__ - INFO - Target: label_stage_encoded
+2025-10-23 15:48:56,737 - __main__ - INFO - Preparing preprocessed data for GRU training...
+2025-10-23 15:48:56,774 - __main__ - INFO - Feature matrix shape: (500000, 14)
+2025-10-23 15:48:56,775 - __main__ - INFO - Target vector shape: (500000,)
+2025-10-23 15:48:56,775 - __main__ - INFO - Creating sequences with optimized vectorization...
+2025-10-23 15:48:56,893 - __main__ - INFO - Processed 50000/499873 sequences (10.0%)
+2025-10-23 15:48:57,024 - __main__ - INFO - Processed 100000/499873 sequences (20.0%)
+2025-10-23 15:48:57,137 - __main__ - INFO - Processed 150000/499873 sequences (30.0%)
+2025-10-23 15:48:57,273 - __main__ - INFO - Processed 200000/499873 sequences (40.0%)
+2025-10-23 15:48:57,387 - __main__ - INFO - Processed 250000/499873 sequences (50.0%)
+2025-10-23 15:48:57,521 - __main__ - INFO - Processed 300000/499873 sequences (60.0%)
+2025-10-23 15:48:57,637 - __main__ - INFO - Processed 350000/499873 sequences (70.0%)
+2025-10-23 15:48:57,770 - __main__ - INFO - Processed 400000/499873 sequences (80.0%)
+2025-10-23 15:48:57,887 - __main__ - INFO - Processed 450000/499873 sequences (90.0%)
+2025-10-23 15:48:58,005 - __main__ - INFO - Created 499873 sequences of length 128
+2025-10-23 15:48:58,005 - __main__ - INFO - Sequence shape: (499873, 128, 14)
+2025-10-23 15:48:58,005 - __main__ - INFO - Target shape: (499873,)
+2025-10-23 15:48:58,005 - __main__ - INFO - Preprocessed data preparation completed successfully
+2025-10-23 15:48:58,005 - __main__ - INFO - Final sequence shape: (499873, 128, 14)
+2025-10-23 15:48:58,005 - __main__ - INFO - Final target shape: (499873,)
+2025-10-23 15:48:58,005 - __main__ - INFO - Class distribution: [100000  99873 100000 100000 100000]
+2025-10-23 15:48:59,954 - __main__ - INFO - === GPU MODE ENABLED ===
+2025-10-23 15:48:59,954 - __main__ - INFO - GPU Device: NVIDIA RTX A2000 12GB
+2025-10-23 15:48:59,954 - __main__ - INFO - Number of GPUs available: 1
+2025-10-23 15:48:59,954 - __main__ - INFO - PyTorch version: 2.5.1
+2025-10-23 15:48:59,954 - __main__ - INFO - CUDA version: 12.1
+2025-10-23 15:48:59,954 - __main__ - INFO - GPU is ready for training!
+2025-10-23 15:48:59,970 - __main__ - INFO - Random seeds set to 42 for reproducibility
+2025-10-23 15:48:59,970 - __main__ - INFO - Starting GRU model training...
+2025-10-23 15:48:59,970 - __main__ - INFO - Optimizing data types for performance...
+2025-10-23 15:48:59,971 - __main__ - INFO - Splitting data into training and validation sets...
+2025-10-23 15:49:01,482 - __main__ - INFO - Training samples: 399,898
+2025-10-23 15:49:01,483 - __main__ - INFO - Validation samples: 99,975
+2025-10-23 15:49:04,392 - __main__ - INFO - Building model architecture...
+2025-10-23 15:49:04,518 - __main__ - INFO - Model built successfully in 0.13 seconds
+2025-10-23 15:49:04,518 - __main__ - INFO - Model architecture:
+GRUModel(
+  (gru_layers): ModuleList(
+    (0): GRU(14, 32, batch_first=True, bidirectional=True)
+    (1-3): 3 x GRU(64, 32, batch_first=True, bidirectional=True)
+  )
+  (dropout_layers): ModuleList(
+    (0-3): 4 x Dropout(p=0.3, inplace=False)
+  )
+  (output_layer): Linear(in_features=64, out_features=5, bias=True)
+  (softmax): Softmax(dim=1)
+)
+2025-10-23 15:49:04,518 - __main__ - INFO - Total parameters: 65,989
+2025-10-23 15:49:04,518 - __main__ - INFO - Trainable parameters: 65,989
+2025-10-23 15:49:06,196 - __main__ - INFO - === STARTING TRAINING PROCESS ===
+2025-10-23 15:49:06,196 - __main__ - INFO - Device: cuda
+2025-10-23 15:49:06,196 - __main__ - INFO - Batch size: 64
+2025-10-23 15:49:06,196 - __main__ - INFO - Total batches per epoch: 6249
+2025-10-23 15:49:39,115 - __main__ - INFO - Training session started at 2025-10-23 15:49:39
+2025-10-23 15:49:39,115 - __main__ - INFO - Session logs will be saved to: gru_training_20251023-154939.log
+2025-10-23 15:49:39,115 - __main__ - INFO - Configuration loaded successfully
+2025-10-23 15:49:39,120 - __main__ - INFO - Model configuration:
+GRU Model Configuration Summary:
+================================
+Architecture:
+  - Input: 128 time steps × 14 features
+  - 4x Bidirectional GRU layers (32 units each)
+  - Output: 5 classes
+  - Estimated parameters: ~86,853
+
+Training Setup:
+  - Learning rate: 0.001
+  - Batch size: 64
+  - Max epochs: 15
+  - Dropout: 0.3
+  - Validation split: 0.2
+  - Early stopping patience: 2
+
+Monitoring:
+  - Metrics: accuracy, precision, recall, f1_score
+  - Model save path: \fab3\btech\2022\siddhant.gond22b@iiitg.ac.in\Project_3\GRU\models\saved_Models\gru_experiment2.keras
+2025-10-23 15:49:39,129 - __main__ - INFO - Loading data from C:\Users\abhay\OneDrive\Desktop\SID\Research_Internship_Under_Dr_Rakesh_Matam\Project_3\dataset\combined_dataset_short_balanced_encoded_normalised.csv
+2025-10-23 15:49:39,718 - __main__ - INFO - Data loaded successfully: (500000, 15)
+2025-10-23 15:49:39,718 - __main__ - INFO - Features: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13']
+2025-10-23 15:49:39,718 - __main__ - INFO - Target: label_stage_encoded
+2025-10-23 15:49:39,718 - __main__ - INFO - Preparing preprocessed data for GRU training...
+2025-10-23 15:49:39,754 - __main__ - INFO - Feature matrix shape: (500000, 14)
+2025-10-23 15:49:39,755 - __main__ - INFO - Target vector shape: (500000,)
+2025-10-23 15:49:39,756 - __main__ - INFO - Creating sequences with optimized vectorization...
+2025-10-23 15:49:39,882 - __main__ - INFO - Processed 50000/499873 sequences (10.0%)
+2025-10-23 15:49:40,001 - __main__ - INFO - Processed 100000/499873 sequences (20.0%)
+2025-10-23 15:49:40,119 - __main__ - INFO - Processed 150000/499873 sequences (30.0%)
+2025-10-23 15:49:40,250 - __main__ - INFO - Processed 200000/499873 sequences (40.0%)
+2025-10-23 15:49:40,369 - __main__ - INFO - Processed 250000/499873 sequences (50.0%)
+2025-10-23 15:49:40,502 - __main__ - INFO - Processed 300000/499873 sequences (60.0%)
+2025-10-23 15:49:40,636 - __main__ - INFO - Processed 350000/499873 sequences (70.0%)
+2025-10-23 15:49:40,768 - __main__ - INFO - Processed 400000/499873 sequences (80.0%)
+2025-10-23 15:49:40,885 - __main__ - INFO - Processed 450000/499873 sequences (90.0%)
+2025-10-23 15:49:41,003 - __main__ - INFO - Created 499873 sequences of length 128
+2025-10-23 15:49:41,003 - __main__ - INFO - Sequence shape: (499873, 128, 14)
+2025-10-23 15:49:41,003 - __main__ - INFO - Target shape: (499873,)
+2025-10-23 15:49:41,003 - __main__ - INFO - Preprocessed data preparation completed successfully
+2025-10-23 15:49:41,003 - __main__ - INFO - Final sequence shape: (499873, 128, 14)
+2025-10-23 15:49:41,003 - __main__ - INFO - Final target shape: (499873,)
+2025-10-23 15:49:41,019 - __main__ - INFO - Class distribution: [100000  99873 100000 100000 100000]
+2025-10-23 15:49:41,717 - __main__ - INFO - === GPU MODE ENABLED ===
+2025-10-23 15:49:41,717 - __main__ - INFO - GPU Device: NVIDIA RTX A2000 12GB
+2025-10-23 15:49:41,717 - __main__ - INFO - Number of GPUs available: 1
+2025-10-23 15:49:41,717 - __main__ - INFO - PyTorch version: 2.5.1
+2025-10-23 15:49:41,717 - __main__ - INFO - CUDA version: 12.1
+2025-10-23 15:49:41,717 - __main__ - INFO - GPU is ready for training!
+2025-10-23 15:49:41,717 - __main__ - INFO - Random seeds set to 42 for reproducibility
+2025-10-23 15:49:41,717 - __main__ - INFO - Starting GRU model training...
+2025-10-23 15:49:41,733 - __main__ - INFO - Optimizing data types for performance...
+2025-10-23 15:49:41,734 - __main__ - INFO - Splitting data into training and validation sets...
+2025-10-23 15:49:43,184 - __main__ - INFO - Training samples: 399,898
+2025-10-23 15:49:43,184 - __main__ - INFO - Validation samples: 99,975
+2025-10-23 15:49:45,549 - __main__ - INFO - Building model architecture...
+2025-10-23 15:49:45,608 - __main__ - INFO - Model built successfully in 0.06 seconds
+2025-10-23 15:49:45,608 - __main__ - INFO - Model architecture:
+GRUModel(
+  (gru_layers): ModuleList(
+    (0): GRU(14, 32, batch_first=True, bidirectional=True)
+    (1-3): 3 x GRU(64, 32, batch_first=True, bidirectional=True)
+  )
+  (dropout_layers): ModuleList(
+    (0-3): 4 x Dropout(p=0.3, inplace=False)
+  )
+  (output_layer): Linear(in_features=64, out_features=5, bias=True)
+  (softmax): Softmax(dim=1)
+)
+2025-10-23 15:49:45,608 - __main__ - INFO - Total parameters: 65,989
+2025-10-23 15:49:45,608 - __main__ - INFO - Trainable parameters: 65,989
+2025-10-23 15:49:47,424 - __main__ - INFO - === STARTING TRAINING PROCESS ===
+2025-10-23 15:49:47,424 - __main__ - INFO - Device: cuda
+2025-10-23 15:49:47,424 - __main__ - INFO - Batch size: 64
+2025-10-23 15:49:47,424 - __main__ - INFO - Total batches per epoch: 6249
+2025-10-23 15:50:30,975 - __main__ - INFO - Epoch [1/15] Train Loss: 0.9500, Train Acc: 0.9561 | Val Loss: 0.9150, Val Acc: 0.9898 | LR: 1.00e-03
+2025-10-23 15:50:30,983 - __main__ - INFO - Model saved with validation loss: 0.9150
+2025-10-23 15:51:11,411 - __main__ - INFO - Epoch [2/15] Train Loss: 0.9372, Train Acc: 0.9676 | Val Loss: 0.9137, Val Acc: 0.9910 | LR: 1.00e-03
+2025-10-23 15:51:11,450 - __main__ - INFO - Model saved with validation loss: 0.9137
+2025-10-23 15:51:52,289 - __main__ - INFO - Epoch [3/15] Train Loss: 0.9380, Train Acc: 0.9668 | Val Loss: 1.1125, Val Acc: 0.7922 | LR: 1.00e-03
+2025-10-23 15:52:32,684 - __main__ - INFO - Epoch [4/15] Train Loss: 1.0154, Train Acc: 0.8894 | Val Loss: 0.9118, Val Acc: 0.9929 | LR: 1.00e-03
+2025-10-23 15:52:32,722 - __main__ - INFO - Model saved with validation loss: 0.9118
+2025-10-23 15:53:14,621 - __main__ - INFO - Epoch [5/15] Train Loss: 0.9128, Train Acc: 0.9920 | Val Loss: 0.9120, Val Acc: 0.9928 | LR: 1.00e-03
+2025-10-23 15:53:55,813 - __main__ - INFO - Epoch [6/15] Train Loss: 0.9125, Train Acc: 0.9923 | Val Loss: 0.9121, Val Acc: 0.9928 | LR: 1.00e-03
+2025-10-23 15:53:55,813 - __main__ - INFO - Early stopping triggered after 6 epochs
+2025-10-23 15:53:55,813 - __main__ - INFO - Training completed successfully
+2025-10-23 15:53:55,813 - __main__ - INFO - Total training time: 4.14 minutes
+2025-10-23 15:53:55,813 - __main__ - INFO - final_train_loss: 0.9125
+2025-10-23 15:53:55,813 - __main__ - INFO - final_val_loss: 0.9121
+2025-10-23 15:53:55,813 - __main__ - INFO - best_val_loss: 0.9118
+2025-10-23 15:53:55,813 - __main__ - INFO - final_train_accuracy: 0.9923
+2025-10-23 15:53:55,829 - __main__ - INFO - final_val_accuracy: 0.9928
+2025-10-23 15:53:55,829 - __main__ - INFO - best_val_accuracy: 0.9929
+2025-10-23 15:53:55,829 - __main__ - INFO - total_epochs: 6.0000
+2025-10-23 15:53:55,829 - __main__ - INFO - Training session completed at 2025-10-23 15:53:55
+2025-10-23 15:53:55,829 - __main__ - INFO - Timestamped log saved as: gru_training_20251023-154939.log
+2025-10-23 15:53:55,829 - __main__ - INFO - CSV metrics saved as: training_metrics_20251023-154939.csv
+2025-10-23 15:53:55,829 - __main__ - INFO - Generating training visualization plots...
+2025-10-23 15:53:56,537 - __main__ - INFO - Training history plot saved to: \fab3\btech\2022\siddhant.gond22b@iiitg.ac.in\Research_Internship_Under_Dr_Rakesh_Matam\Project_3\GRU\plots\training_history_20251023-154939.png
+2025-10-23 15:53:56,537 - __main__ - INFO - Evaluating model and generating evaluation plots...
+2025-10-23 15:53:56,537 - __main__ - INFO - Starting comprehensive model evaluation...
+2025-10-23 15:54:29,551 - __main__ - ERROR - Training pipeline failed: CUDA out of memory. Tried to allocate 37.42 GiB. GPU 0 has a total capacity of 11.99 GiB of which 2.17 GiB is free. Of the allocated memory 7.79 GiB is allocated by PyTorch, and 49.84 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+2025-10-23 15:54:29,551 - __main__ - ERROR - Full traceback:
+Traceback (most recent call last):
+  File "C:\Users\abhay\OneDrive\Desktop\SID\Research_Internship_Under_Dr_Rakesh_Matam\Project_3\GRU\scripts\train.py", line 956, in main
+    model, history = trainer.train(X, y)
+  File "C:\Users\abhay\OneDrive\Desktop\SID\Research_Internship_Under_Dr_Rakesh_Matam\Project_3\GRU\scripts\train.py", line 848, in train
+    self._evaluate_and_plot(X_val, y_val)
+  File "C:\Users\abhay\OneDrive\Desktop\SID\Research_Internship_Under_Dr_Rakesh_Matam\Project_3\GRU\scripts\train.py", line 869, in _evaluate_and_plot
+    y_pred_proba = self.model(X_val_tensor).cpu().numpy()
+  File "C:\Users\abhay\Miniconda3\envs\pytorch_gpu\lib\site-packages\torch\nn\modules\module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "C:\Users\abhay\Miniconda3\envs\pytorch_gpu\lib\site-packages\torch\nn\modules\module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "C:\Users\abhay\OneDrive\Desktop\SID\Research_Internship_Under_Dr_Rakesh_Matam\Project_3\GRU\gru\model_builder.py", line 62, in forward
+    x, _ = gru_layer(x)
+  File "C:\Users\abhay\Miniconda3\envs\pytorch_gpu\lib\site-packages\torch\nn\modules\module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "C:\Users\abhay\Miniconda3\envs\pytorch_gpu\lib\site-packages\torch\nn\modules\module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "C:\Users\abhay\Miniconda3\envs\pytorch_gpu\lib\site-packages\torch\nn\modules\rnn.py", line 1392, in forward
+    result = _VF.gru(
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 37.42 GiB. GPU 0 has a total capacity of 11.99 GiB of which 2.17 GiB is free. Of the allocated memory 7.79 GiB is allocated by PyTorch, and 49.84 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+2025-10-23 17:17:36,702 - __main__ - INFO - Training session started at 2025-10-23 17:17:36
+2025-10-23 17:17:36,702 - __main__ - INFO - Session logs will be saved to: gru_training_2025-10-23_17-17-36.log
+2025-10-23 17:17:36,702 - __main__ - INFO - Configuration loaded successfully
+2025-10-23 17:17:36,702 - __main__ - INFO - Model configuration:
+GRU Model Configuration Summary:
+================================
+Architecture:
+  - Input: 128 time steps Ã— 14 features
+  - 4x Bidirectional GRU layers (32 units each)
+  - Output: 5 classes
+  - Estimated parameters: ~86,853
+
+Training Setup:
+  - Learning rate: 0.001
+  - Batch size: 64
+  - Max epochs: 15
+  - Dropout: 0.3
+  - Validation split: 0.2
+  - Early stopping patience: 2
+
+Monitoring:
+  - Metrics: accuracy, precision, recall, f1_score
+  - Model save path: \fab3\btech\2022\siddhant.gond22b@iiitg.ac.in\Project_3\GRU\models\saved_Models\gru_experiment2.keras
+2025-10-23 17:17:36,702 - __main__ - INFO - Loading data from C:\Users\abhay\OneDrive\Desktop\SID\Research_Internship_Under_Dr_Rakesh_Matam\Project_3\dataset\combined_dataset_short_balanced_encoded_normalised.csv
+2025-10-23 17:17:37,604 - __main__ - INFO - Data loaded successfully: (500000, 15)
+2025-10-23 17:17:37,604 - __main__ - INFO - Features: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13']
+2025-10-23 17:17:37,604 - __main__ - INFO - Target: label_stage_encoded
+2025-10-23 17:17:37,604 - __main__ - INFO - Preparing preprocessed data for GRU training...
+2025-10-23 17:17:37,652 - __main__ - INFO - Feature matrix shape: (500000, 14)
+2025-10-23 17:17:37,652 - __main__ - INFO - Target vector shape: (500000,)
+2025-10-23 17:17:37,655 - __main__ - INFO - Creating sequences with optimized vectorization...
+2025-10-23 17:17:37,835 - __main__ - INFO - Processed 50000/499873 sequences (10.0%)
+2025-10-23 17:17:37,999 - __main__ - INFO - Processed 100000/499873 sequences (20.0%)
+2025-10-23 17:18:07,638 - __main__ - INFO - Training session started at 2025-10-23 17:18:07
+2025-10-23 17:18:07,638 - __main__ - INFO - Session logs will be saved to: gru_training_2025-10-23_17-18-07.log
+2025-10-23 17:18:07,652 - __main__ - INFO - Configuration loaded successfully
+2025-10-23 17:18:07,652 - __main__ - INFO - Model configuration:
+GRU Model Configuration Summary:
+================================
+Architecture:
+  - Input: 128 time steps × 14 features
+  - 4x Bidirectional GRU layers (32 units each)
+  - Output: 5 classes
+  - Estimated parameters: ~86,853
+
+Training Setup:
+  - Learning rate: 0.001
+  - Batch size: 64
+  - Max epochs: 15
+  - Dropout: 0.3
+  - Validation split: 0.2
+  - Early stopping patience: 2
+
+Monitoring:
+  - Metrics: accuracy, precision, recall, f1_score
+  - Model save path: \fab3\btech\2022\siddhant.gond22b@iiitg.ac.in\Project_3\GRU\models\saved_Models\gru_experiment2.keras
+2025-10-23 17:18:07,652 - __main__ - INFO - Loading data from C:\Users\abhay\OneDrive\Desktop\SID\Research_Internship_Under_Dr_Rakesh_Matam\Project_3\dataset\combined_dataset_short_balanced_encoded_normalised.csv
+2025-10-23 17:18:08,473 - __main__ - INFO - Data loaded successfully: (500000, 15)
+2025-10-23 17:18:08,473 - __main__ - INFO - Features: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13']
+2025-10-23 17:18:08,473 - __main__ - INFO - Target: label_stage_encoded
+2025-10-23 17:18:08,473 - __main__ - INFO - Preparing preprocessed data for GRU training...
+2025-10-23 17:18:08,506 - __main__ - INFO - Feature matrix shape: (500000, 14)
+2025-10-23 17:18:08,506 - __main__ - INFO - Target vector shape: (500000,)
+2025-10-23 17:18:08,506 - __main__ - INFO - Creating sequences with optimized vectorization...
+2025-10-23 17:18:08,689 - __main__ - INFO - Processed 50000/499873 sequences (10.0%)
+2025-10-23 17:18:08,866 - __main__ - INFO - Processed 100000/499873 sequences (20.0%)
+2025-10-23 17:18:09,038 - __main__ - INFO - Processed 150000/499873 sequences (30.0%)
+2025-10-23 17:18:09,219 - __main__ - INFO - Processed 200000/499873 sequences (40.0%)
+2025-10-23 17:18:09,371 - __main__ - INFO - Processed 250000/499873 sequences (50.0%)
+2025-10-23 17:18:09,532 - __main__ - INFO - Processed 300000/499873 sequences (60.0%)
+2025-10-23 17:18:09,687 - __main__ - INFO - Processed 350000/499873 sequences (70.0%)
+2025-10-23 17:18:09,855 - __main__ - INFO - Processed 400000/499873 sequences (80.0%)
+2025-10-23 17:18:10,021 - __main__ - INFO - Processed 450000/499873 sequences (90.0%)
+2025-10-23 17:18:10,215 - __main__ - INFO - Created 499873 sequences of length 128
+2025-10-23 17:18:10,217 - __main__ - INFO - Sequence shape: (499873, 128, 14)
+2025-10-23 17:18:10,217 - __main__ - INFO - Target shape: (499873,)
+2025-10-23 17:18:10,217 - __main__ - INFO - Preprocessed data preparation completed successfully
+2025-10-23 17:18:10,217 - __main__ - INFO - Final sequence shape: (499873, 128, 14)
+2025-10-23 17:18:10,217 - __main__ - INFO - Final target shape: (499873,)
+2025-10-23 17:18:10,230 - __main__ - INFO - Class distribution: [100000  99873 100000 100000 100000]
+2025-10-23 17:18:10,238 - __main__ - INFO - Results will be saved to: C:\Users\abhay\OneDrive\Desktop\SID\Research_Internship_Under_Dr_Rakesh_Matam\Project_3\GRU\results\results_2025-10-23_17-18-07
+2025-10-23 17:18:11,288 - __main__ - INFO - ======================================================================
+2025-10-23 17:18:11,288 - __main__ - INFO - === GPU MODE ENABLED ===
+2025-10-23 17:18:11,288 - __main__ - INFO - ======================================================================
+2025-10-23 17:18:11,288 - __main__ - INFO - GPU Device: NVIDIA RTX A2000 12GB
+2025-10-23 17:18:11,288 - __main__ - INFO - Number of GPUs available: 1
+2025-10-23 17:18:11,288 - __main__ - INFO - PyTorch version: 2.5.1
+2025-10-23 17:18:11,288 - __main__ - INFO - CUDA version: 12.1
+2025-10-23 17:18:11,288 - __main__ - INFO - cuDNN version: 90100
+2025-10-23 17:18:11,288 - __main__ - INFO - GPU Memory - Total: 11.99 GB
+2025-10-23 17:18:11,288 - __main__ - INFO - GPU Memory - Reserved: 0.00 GB
+2025-10-23 17:18:11,301 - __main__ - INFO - GPU Memory - Allocated: 0.00 GB
+2025-10-23 17:18:11,302 - __main__ - INFO - GPU Compute Capability: (8, 6)
+2025-10-23 17:18:11,302 - __main__ - INFO - ======================================================================
+2025-10-23 17:18:11,323 - __main__ - INFO - ======================================================================
+2025-10-23 17:18:11,339 - __main__ - INFO - Random seeds set to 42 for reproducibility
+2025-10-23 17:18:11,340 - __main__ - INFO - Training device set to: cuda
+2025-10-23 17:18:11,341 - __main__ - INFO - Starting GRU model training...
+2025-10-23 17:18:11,342 - __main__ - INFO - Optimizing data types for performance...
+2025-10-23 17:18:11,345 - __main__ - INFO - Splitting data into training and validation sets...
+2025-10-23 17:18:13,052 - __main__ - INFO - Training samples: 399,898
+2025-10-23 17:18:13,052 - __main__ - INFO - Validation samples: 99,975
+2025-10-23 17:18:15,517 - __main__ - INFO - Building model architecture...
+2025-10-23 17:18:15,602 - __main__ - INFO - Model built successfully in 0.08 seconds
+2025-10-23 17:18:15,602 - __main__ - INFO - Model architecture:
+GRUModel(
+  (gru_layers): ModuleList(
+    (0): GRU(14, 32, batch_first=True, bidirectional=True)
+    (1-3): 3 x GRU(64, 32, batch_first=True, bidirectional=True)
+  )
+  (dropout_layers): ModuleList(
+    (0-3): 4 x Dropout(p=0.3, inplace=False)
+  )
+  (output_layer): Linear(in_features=64, out_features=5, bias=True)
+  (softmax): Softmax(dim=1)
+)
+2025-10-23 17:18:15,602 - __main__ - INFO - Total parameters: 65,989
+2025-10-23 17:18:15,602 - __main__ - INFO - Trainable parameters: 65,989
+2025-10-23 17:18:18,542 - __main__ - INFO - === STARTING TRAINING PROCESS ===
+2025-10-23 17:18:18,542 - __main__ - INFO - Device: cuda
+2025-10-23 17:18:18,542 - __main__ - INFO - Batch size: 64
+2025-10-23 17:18:18,542 - __main__ - INFO - Total batches per epoch: 6249
+2025-10-23 17:18:18,542 - __main__ - INFO - Training metrics will be logged to: C:\Users\abhay\OneDrive\Desktop\SID\Research_Internship_Under_Dr_Rakesh_Matam\Project_3\GRU\results\results_2025-10-23_17-18-07\training_metrics_2025-10-23_17-18-07.csv

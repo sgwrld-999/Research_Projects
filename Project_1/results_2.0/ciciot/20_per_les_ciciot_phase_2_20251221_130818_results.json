@@ -1,0 +1,22 @@
+{
+  "ciciot_testing_0_100": {
+    "accuracy": 0.9997249876244431,
+    "auc": NaN
+  },
+  "ciciot_testing_100_0": {
+    "accuracy": 0.9850093254196439,
+    "auc": NaN
+  },
+  "ciciot_testing_10_90": {
+    "accuracy": 0.9981349160712232,
+    "auc": 0.9967021941374847
+  },
+  "ciciot_testing_50_50": {
+    "accuracy": 0.9927696746353586,
+    "auc": 0.9977733505560032
+  },
+  "ciciot_testing_90_10": {
+    "accuracy": 0.986649399222965,
+    "auc": 0.997745510331072
+  }
+}

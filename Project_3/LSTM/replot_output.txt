@@ -1,0 +1,25 @@
+2025-12-23 14:39:53.056314: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+2025-12-23 14:39:57.336787: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+2025-12-23 14:39:58,280 - scirpts.train_pytorch_cuda - INFO - Loading data from C:\Users\abhay\OneDrive\Desktop\SID\Research_Internship_Under_Dr_Rakesh_Matam\Project_3\dataset\combined_dataset_short_balanced_encoded_normalised.csv
+2025-12-23 14:39:59,073 - scirpts.train_pytorch_cuda - INFO - Data loaded successfully: (500000, 15)
+2025-12-23 14:39:59,073 - scirpts.train_pytorch_cuda - INFO - Columns: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', 'label_stage_encoded']
+2025-12-23 14:39:59,073 - scirpts.train_pytorch_cuda - INFO - Preparing preprocessed data for LSTM training...
+2025-12-23 14:39:59,109 - scirpts.train_pytorch_cuda - INFO - Feature matrix shape: (500000, 14)
+2025-12-23 14:39:59,109 - scirpts.train_pytorch_cuda - INFO - Target vector shape: (500000,)
+2025-12-23 14:39:59,117 - scirpts.train_pytorch_cuda - INFO - Unique classes: [0 1 2 3 4]
+2025-12-23 14:40:00,205 - scirpts.train_pytorch_cuda - INFO - Created 499937 sequences of length 64
+2025-12-23 14:40:00,205 - scirpts.train_pytorch_cuda - INFO - Sequence shape: (499937, 64, 14)
+2025-12-23 14:40:00,205 - scirpts.train_pytorch_cuda - INFO - Target shape: (499937,)
+2025-12-23 14:40:00,205 - scirpts.train_pytorch_cuda - INFO - Final sequence shape: (499937, 64, 14)
+2025-12-23 14:40:00,205 - scirpts.train_pytorch_cuda - INFO - Final target shape: (499937,)
+2025-12-23 14:40:00,208 - scirpts.train_pytorch_cuda - INFO - Class distribution: [100000  99937 100000 100000 100000]
+
+Starting ROC replotting...
+Loading config from C:\Users\abhay\OneDrive\Desktop\SID\Research_Internship_Under_Dr_Rakesh_Matam\Project_3\LSTM\config\lstm_config_reduced_v2.yaml
+Device: cuda
+Loading model from C:\Users\abhay\OneDrive\Desktop\SID\Research_Internship_Under_Dr_Rakesh_Matam\Project_3\LSTM\models\saved_Models\best_model.pth
+Running prediction...
+Validation Accuracy: 0.9826
+Saving plot to C:\Users\abhay\OneDrive\Desktop\SID\Research_Internship_Under_Dr_Rakesh_Matam\Project_3\LSTM\results\results_20251222_213205\roc_curves.png
+Done!
+

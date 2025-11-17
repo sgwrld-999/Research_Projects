@@ -1,6 +1,201 @@
 # LSTM Network Intrusion Detection System
 
-A professional implementation of LSTM-based neural networks for network intrusion detection, following software engineering best practices and machine learning principles.
+A professional implementation of LSTM-based neural networks for network intrusion detection, with **CUDA-accelerated PyTorch** support for high-performance GPU training.
+
+## 🚀 Quick Start - CUDA Training
+
+### Prerequisites
+- NVIDIA GPU with CUDA support
+- PyTorch with CUDA installed
+- Conda environment: `pyTorch_LSTM`
+
+### Running CUDA-Accelerated Training
+
+**Option 1: Using Batch Script (Windows)**
+```bash
+cd C:\Users\abhay\OneDrive\Desktop\SID\Research_Internship_Under_Dr_Rakesh_Matam\Project_3\LSTM
+run_cuda_training.bat
+```
+
+**Option 2: Using PowerShell**
+```powershell
+cd C:\Users\abhay\OneDrive\Desktop\SID\Research_Internship_Under_Dr_Rakesh_Matam\Project_3\LSTM
+.\run_cuda_training.ps1
+```
+
+**Option 3: Manual Execution**
+```bash
+# Activate environment
+conda activate pyTorch_LSTM
+
+# Verify CUDA
+python -c "import torch; print(f'CUDA Available: {torch.cuda.is_available()}')"
+
+# Run training
+python scirpts\train_pytorch_cuda.py
+```
+
+### What the Training Does
+
+✅ **Automatic CUDA Verification** - Checks GPU availability and prints device information  
+✅ **No CPU Fallback** - Training fails if CUDA is not available (as required)  
+✅ **Timestamp-Based Results** - All outputs saved in `results/results_YYYY-MM-DD_HH-MM-SS/`  
+✅ **Comprehensive Visualizations**:
+  - ROC Curves with AUC (4 decimal places)
+  - Confusion Matrix
+  - Training/Validation Curves (Loss & Accuracy)
+✅ **Detailed Metrics**:
+  - `classification_report.txt` - Detailed per-class metrics
+  - `classification_metrics.csv` - Structured metrics data
+✅ **Reproducible** - Fixed random seed (42) for consistent results
+
+---
+
+## 📁 Project Structure (Updated)
+
+```
+LSTM/
+├── config/                         # Configuration files
+│   ├── default.yaml
+│   └── lstm_config_experiment_1.yaml
+├── lstm/                          # Core LSTM package
+│   ├── __init__.py
+│   ├── config_loader.py          # Pydantic configuration
+│   ├── builder.py                # TensorFlow model builder
+│   └── lstm_with_softmax.py
+├── scirpts/                       # Training scripts
+│   ├── train.py                  # TensorFlow CPU training
+│   ├── train_pytorch_cuda.py     # 🆕 PyTorch CUDA training
+│   └── evaluate.py
+├── logs/                          # Training logs
+│   └── training_cuda_*.log       # Timestamped CUDA logs
+├── models/                        # Saved models
+│   └── saved_Models/
+├── results/                       # 🆕 Timestamped results
+│   └── results_YYYYMMDD_HHMMSS/
+│       ├── classification_report.txt
+│       ├── classification_metrics.csv
+│       ├── confusion_matrix.png
+│       ├── roc_curves.png
+│       └── training_curves.png
+├── run_cuda_training.bat         # 🆕 Windows batch launcher
+├── run_cuda_training.ps1         # 🆕 PowerShell launcher
+└── README.md
+```
+
+---
+
+## 🎯 CUDA Training Features
+
+### 1. Automatic CUDA Verification
+The training script verifies CUDA before starting:
+```
+===================================================================
+CUDA DEVICE VERIFICATION
+===================================================================
+✓ CUDA is available!
+✓ CUDA Version: 12.1
+✓ Number of CUDA devices: 1
+✓ Current device: 0
+✓ Device name: NVIDIA GeForce RTX 3080
+✓ Device capability: 8.6
+✓ Total memory: 10.00 GB
+✓ Multi-processor count: 68
+===================================================================
+```
+
+### 2. PyTorch LSTM Architecture
+```python
+class PyTorchLSTM(nn.Module):
+    - LSTM layers with CUDA optimization
+    - Automatic gradient computation
+    - Bidirectional support
+    - Dropout regularization
+    - Fully connected output layer
+```
+
+### 3. Training Pipeline
+- **Data Loading**: Automatic sequence generation
+- **Train/Val Split**: Stratified splitting (80/20)
+- **CUDA Tensors**: All data moved to GPU automatically
+- **Batch Processing**: Memory-efficient DataLoader
+- **Early Stopping**: Patience-based stopping
+- **LR Scheduling**: ReduceLROnPlateau
+- **Gradient Clipping**: Prevents exploding gradients
+
+### 4. Results Organization
+All results saved in timestamped folders:
+```
+results/results_20251023_143052/
+├── classification_report.txt      # Detailed metrics per class
+├── classification_metrics.csv     # Structured CSV metrics
+├── confusion_matrix.png           # Visual confusion matrix
+├── roc_curves.png                 # ROC curves with AUC (4 decimals)
+└── training_curves.png            # Loss & Accuracy plots
+```
+
+---
+
+## 🔧 Configuration
+
+### YAML Configuration File
+```yaml
+# config/lstm_config_experiment_1.yaml
+input_dim: 14           # Number of features
+seq_len: 64             # Sequence length
+num_classes: 5          # Number of classes
+lstm_units: 16          # LSTM hidden units
+num_layers: 2           # Number of LSTM layers
+dropout: 0.3            # Dropout rate
+bidirectional: false    # Bidirectional LSTM
+learning_rate: 0.001    # Adam learning rate
+batch_size: 16          # Batch size
+epochs: 15              # Maximum epochs
+validation_split: 0.2   # Validation split
+early_stopping_patience: 2  # Early stopping patience
+```
+
+---
+
+## 📊 Output Metrics
+
+### Classification Report (TXT)
+```
+CUDA-Accelerated PyTorch LSTM Classification Report
+============================================================
+
+              precision    recall  f1-score   support
+
+     Class_0       0.95      0.94      0.94       500
+     Class_1       0.92      0.93      0.93       450
+     ...
+```
+
+### Classification Metrics (CSV)
+```csv
+Per-Class Metrics
+Class,Precision,Recall,F1-Score
+Class_0,0.9523,0.9401,0.9462
+Class_1,0.9234,0.9311,0.9272
+...
+
+Overall Metrics
+Metric,Value
+Accuracy,0.9456
+Precision (Macro),0.9401
+Recall (Macro),0.9378
+F1-Score (Macro),0.9389
+```
+
+### ROC Curves
+- Individual ROC curve for each class
+- AUC values rounded to **4 decimal places** (e.g., 0.9827)
+- Clear legend and grid
+- High-resolution PNG (300 DPI)
+
+---
+
+## 🧠 Theoretical Foundation (Original Content Below)
 
 ## 📚 Theoretical Foundation
 

@@ -1,0 +1,2 @@
+SHAP values (Class 0) shape: (5, 14)
+X_test_mean shape: (20, 14)

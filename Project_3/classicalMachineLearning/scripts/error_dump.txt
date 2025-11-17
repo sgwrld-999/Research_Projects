@@ -1,0 +1,14 @@
+Traceback (most recent call last):
+  File "c:\Users\abhay\OneDrive\Desktop\SID\Research_Internship_Under_Dr_Rakesh_Matam\Project_3\classicalMachineLearning\scripts\train.py", line 209, in <module>
+    train_and_evaluate()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "c:\Users\abhay\OneDrive\Desktop\SID\Research_Internship_Under_Dr_Rakesh_Matam\Project_3\classicalMachineLearning\scripts\train.py", line 147, in train_and_evaluate
+    model.fit(X_train, y_train)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\Users\abhay\Miniconda3\Lib\site-packages\xgboost\core.py", line 729, in inner_f
+    return func(**kwargs)
+  File "C:\Users\abhay\Miniconda3\Lib\site-packages\xgboost\sklearn.py", line 1641, in fit
+    raise ValueError(
+    ...<2 lines>...
+    )
+ValueError: Invalid classes inferred from unique values of `y`.  Expected: [0 1 2 3], got [0 1 2 4]

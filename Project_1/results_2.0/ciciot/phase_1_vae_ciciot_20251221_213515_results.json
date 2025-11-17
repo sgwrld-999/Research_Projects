@@ -1,0 +1,34 @@
+{
+  "ciciot_testing_0_100": {
+    "accuracy": 0.90076,
+    "auc": NaN
+  },
+  "ciciot_testing_100_0": {
+    "accuracy": 0.808885,
+    "auc": NaN
+  },
+  "ciciot_testing_10_90": {
+    "accuracy": 0.891145,
+    "auc": 0.9279399345833332
+  },
+  "ciciot_testing_50_50": {
+    "accuracy": 0.855655,
+    "auc": 0.9291891208499999
+  },
+  "ciciot_testing_60_40": {
+    "accuracy": 0.8093357142857143,
+    "auc": 0.9270228662591251
+  },
+  "ciciot_testing_70_30": {
+    "accuracy": 0.811525,
+    "auc": 0.9267085910002872
+  },
+  "ciciot_testing_80_20": {
+    "accuracy": 0.8119714285714286,
+    "auc": 0.9275695634382751
+  },
+  "ciciot_testing_90_10": {
+    "accuracy": 0.819085,
+    "auc": 0.9303863883333332
+  }
+}

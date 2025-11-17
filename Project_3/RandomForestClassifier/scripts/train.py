@@ -75,6 +75,8 @@ import os
 import sys
 import logging
 import warnings
+import time
+import psutil
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, Dict, List, Tuple, Any
@@ -83,20 +85,121 @@ from typing import Optional, Dict, List, Tuple, Any
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, confusion_matrix
-from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import classification_report, confusion_matrix, roc_curve, auc, roc_auc_score
+from sklearn.preprocessing import LabelEncoder, StandardScaler, label_binarize
 import joblib
 import matplotlib.pyplot as plt
 import seaborn as sns
+
+# PyTorch imports
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+from torch.utils.data import Dataset, DataLoader, TensorDataset
 
 # Add project root to path
 current_dir = Path(__file__).parent
 project_root = current_dir.parent
 sys.path.append(str(project_root))
 
+# Add project root to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 # Custom imports
 from random_forest.config_loader import RandomForestConfig
-from Project_3.RandomForestClassifier.random_forest.random_forest import RandomForestClassifier
+
+# ============================================================================
+# PyTorch Model Definition (Embedded)
+# ============================================================================
+
+class TabularDeepClassifier(nn.Module):
+    """Deep Learning Classifier optimized for tabular data with GPU acceleration."""
+    
+    def __init__(
+        self,
+        input_dim: int,
+        num_classes: int,
+        hidden_dims: List[int] = [256, 128, 64],
+        dropout_rate: float = 0.3,
+        use_batch_norm: bool = True,
+        use_residual: bool = False
+    ):
+        super(TabularDeepClassifier, self).__init__()
+        
+        self.input_dim = input_dim
+        self.num_classes = num_classes
+        self.hidden_dims = hidden_dims
+        self.dropout_rate = dropout_rate
+        self.use_batch_norm = use_batch_norm
+        self.use_residual = use_residual
+        
+        # Build the network
+        self.layers = nn.ModuleList()
+        self.batch_norms = nn.ModuleList() if use_batch_norm else None
+        self.dropouts = nn.ModuleList()
+        
+        # Input layer
+        prev_dim = input_dim
+        for i, hidden_dim in enumerate(hidden_dims):
+            self.layers.append(nn.Linear(prev_dim, hidden_dim))
+            
+            if use_batch_norm:
+                self.batch_norms.append(nn.BatchNorm1d(hidden_dim))
+            
+            self.dropouts.append(nn.Dropout(dropout_rate))
+            
+            prev_dim = hidden_dim
+        
+        # Output layer
+        self.output_layer = nn.Linear(prev_dim, num_classes)
+        
+        # Initialize weights
+        self._initialize_weights()
+    
+    def _initialize_weights(self):
+        """Initialize network weights using He initialization."""
+        for module in self.modules():
+            if isinstance(module, nn.Linear):
+                nn.init.kaiming_normal_(module.weight, mode='fan_in', nonlinearity='relu')
+                if module.bias is not None:
+                    nn.init.constant_(module.bias, 0)
+            elif isinstance(module, nn.BatchNorm1d):
+                nn.init.constant_(module.weight, 1)
+                nn.init.constant_(module.bias, 0)
+    
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass through the network."""
+        identity = x
+        
+        for i, layer in enumerate(self.layers):
+            x = layer(x)
+            
+            if self.use_batch_norm:
+                x = self.batch_norms[i](x)
+            
+            x = F.relu(x)
+            x = self.dropouts[i](x)
+            
+            if self.use_residual and i > 0 and identity.shape[1] == x.shape[1]:
+                x = x + identity
+            
+            identity = x
+        
+        logits = self.output_layer(x)
+        return logits
+    
+    def predict_proba(self, x: torch.Tensor) -> torch.Tensor:
+        """Get class probabilities using softmax."""
+        logits = self.forward(x)
+        probabilities = F.softmax(logits, dim=1)
+        return probabilities
+    
+    def predict(self, x: torch.Tensor) -> torch.Tensor:
+        """Get predicted class labels."""
+        probabilities = self.predict_proba(x)
+        predictions = torch.argmax(probabilities, dim=1)
+        return predictions
 
 # Configure logging
 logging.basicConfig(
@@ -138,6 +241,18 @@ class RandomForestTrainingPipeline:
         self.model = None
         self.training_metrics = {}
         self.label_encoder = LabelEncoder()
+        self.scaler = StandardScaler()
+        self.training_history = {'train_loss': [], 'train_acc': [], 'val_loss': [], 'val_acc': []}
+        
+        # Performance tracking
+        self.training_time = 0.0
+        self.inference_time = 0.0
+        self.peak_memory_usage = 0.0
+        self.gpu_memory_allocated = 0.0
+        self.gpu_memory_reserved = 0.0
+        
+        # Setup GPU device
+        self.device = self._setup_device()
         
         # Setup directories
         self.setup_directories()
@@ -145,25 +260,53 @@ class RandomForestTrainingPipeline:
         # Setup logging
         self.setup_logging()
         
-        logger.info("Random Forest Training Pipeline initialized")
+        logger.info("PyTorch GPU Training Pipeline initialized")
+        logger.info(f"Device: {self.device}")
+    
+    def _setup_device(self) -> torch.device:
+        """Setup and verify CUDA device."""
+        if not torch.cuda.is_available():
+            raise RuntimeError("CUDA is not available! This script requires GPU.")
+        
+        device = torch.device('cuda')
+        logger.info(f"✓ CUDA Available: {torch.cuda.is_available()}")
+        logger.info(f"✓ CUDA Device: {torch.cuda.get_device_name(0)}")
+        logger.info(f"✓ CUDA Version: {torch.version.cuda}")
+        logger.info(f"✓ PyTorch Version: {torch.__version__}")
+        
+        # Set random seeds for reproducibility
+        torch.manual_seed(self.config.random_state)
+        torch.cuda.manual_seed(self.config.random_state)
+        np.random.seed(self.config.random_state)
+        
+        return device
         
     def setup_directories(self) -> None:
         """Create necessary directories for outputs."""
+        base_dir = Path(__file__).parent.parent
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        
+        self.results_dir = base_dir / "results" / f"results_{timestamp}"
+        self.results_dir.mkdir(parents=True, exist_ok=True)
+        
         directories = [
             Path(self.config.export_path).parent,
-            Path("C:\\Users\\dicla\\Research_Internship_Under_Dr_Rakesh_Matam\\Project_3\\RandomForestClassifier\\logs"),
-            Path("C:\\Users\\dicla\\Research_Internship_Under_Dr_Rakesh_Matam\\Project_3\\RandomForestClassifier\\outputs"),
-            Path("C:\\Users\\dicla\\Research_Internship_Under_Dr_Rakesh_Matam\\Project_3\\RandomForestClassifier\\plots")
+            base_dir / "logs",
+            base_dir / "models",
+            self.results_dir
         ]
         
         for directory in directories:
             directory.mkdir(parents=True, exist_ok=True)
+        
+        logger.info(f"Results will be saved to: {self.results_dir}")
             
     def setup_logging(self) -> None:
         """Setup logging configuration."""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        log_filename = f"random_forest_training_{timestamp}.log"
-        log_path = Path("C:\\Users\\dicla\\Research_Internship_Under_Dr_Rakesh_Matam\\Project_3\\RandomForestClassifier\\logs") / log_filename
+        base_dir = Path(__file__).parent.parent
+        log_filename = f"pytorch_training_{timestamp}.log"
+        log_path = base_dir / "logs" / log_filename
         
         # Create file handler
         file_handler = logging.FileHandler(log_path)
@@ -267,15 +410,23 @@ class RandomForestTrainingPipeline:
         # Convert to appropriate types
         X = X.astype(np.float32)
         
-        logger.info(f"Feature matrix shape: {X.shape}")
-        logger.info(f"Target vector shape: {y.shape}")
+        # Encode labels
+        y_encoded = self.label_encoder.fit_transform(y)
+        
+        # Scale features
+        X_scaled = self.scaler.fit_transform(X)
+        
+        logger.info(f"Feature matrix shape: {X_scaled.shape}")
+        logger.info(f"Target vector shape: {y_encoded.shape}")
+        logger.info(f"Number of classes: {len(self.label_encoder.classes_)}")
+        logger.info(f"Class labels: {self.label_encoder.classes_}")
         logger.info(f"Features: {feature_columns[:10]}{'...' if len(feature_columns) > 10 else ''}")
         
         # Check for infinite or NaN values
-        if np.any(np.isnan(X)) or np.any(np.isinf(X)):
+        if np.any(np.isnan(X_scaled)) or np.any(np.isinf(X_scaled)):
             logger.warning("NaN or infinite values found in features")
             
-        return X, y, feature_columns
+        return X_scaled, y_encoded, feature_columns
         
     def create_data_splits(self, X: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, ...]:
         """
@@ -326,7 +477,7 @@ class RandomForestTrainingPipeline:
                    X_val: np.ndarray, y_val: np.ndarray,
                    feature_names: List[str]) -> Any:
         """
-        Train the Random Forest model.
+        Train the PyTorch model on GPU.
         
         Args:
             X_train (np.ndarray): Training features
@@ -338,309 +489,525 @@ class RandomForestTrainingPipeline:
         Returns:
             Any: Trained model
         """
-        logger.info("Starting Random Forest model training...")
+        logger.info("Starting PyTorch GPU model training...")
+        logger.info(f"Training on device: {self.device}")
         
-        # Create a simplified wrapper for sklearn RandomForestClassifier
-        from sklearn.ensemble import RandomForestClassifier as SklearnRF
+        # Start tracking training time and memory
+        training_start_time = time.time()
+        process = psutil.Process(os.getpid())
+        initial_memory = process.memory_info().rss / 1024 / 1024  # MB
         
-        class SimpleRandomForestClassifier:
-            def __init__(self, config):
-                self.config = config
-                self.feature_names = None
-                self.training_history = {}
-                
-                # Extract sklearn parameters from config
-                params = {
-                    'n_estimators': getattr(config, 'n_estimators', 100),
-                    'criterion': getattr(config, 'criterion', 'gini'),
-                    'max_depth': getattr(config, 'max_depth', None),
-                    'min_samples_split': getattr(config, 'min_samples_split', 2),
-                    'min_samples_leaf': getattr(config, 'min_samples_leaf', 1),
-                    'min_weight_fraction_leaf': getattr(config, 'min_weight_fraction_leaf', 0.0),
-                    'max_features': getattr(config, 'max_features', 'auto'),
-                    'max_leaf_nodes': getattr(config, 'max_leaf_nodes', None),
-                    'min_impurity_decrease': getattr(config, 'min_impurity_decrease', 0.0),
-                    'bootstrap': getattr(config, 'bootstrap', True),
-                    'oob_score': getattr(config, 'oob_score', False),
-                    'n_jobs': getattr(config, 'n_jobs', -1),
-                    'random_state': getattr(config, 'random_state', 42),
-                    'verbose': getattr(config, 'verbose', 0),
-                    'warm_start': getattr(config, 'warm_start', False),
-                    'class_weight': getattr(config, 'class_weight', None),
-                    'ccp_alpha': getattr(config, 'ccp_alpha', 0.0),
-                    'max_samples': getattr(config, 'max_samples', None)
-                }
-                
-                # Remove None values
-                self.params = {k: v for k, v in params.items() if v is not None}
-                self.model = SklearnRF(**self.params)
-                
-            def fit(self, X_train, y_train, X_val=None, y_val=None, verbose=False):
-                """Train the model"""
-                if verbose:
-                    logger.info(f"Training RandomForest with {X_train.shape[0]} samples")
-                    logger.info(f"Parameters: {self.params}")
-                
-                self.model.fit(X_train, y_train)
-                
-                # Store metrics
-                train_acc = self.model.score(X_train, y_train)
-                val_acc = self.model.score(X_val, y_val) if X_val is not None else None
-                
-                metrics = {'train_accuracy': train_acc, 'val_accuracy': val_acc}
-                self.training_history = metrics
-                
-                if verbose:
-                    logger.info(f"Training accuracy: {train_acc:.4f}")
-                    if val_acc:
-                        logger.info(f"Validation accuracy: {val_acc:.4f}")
-                
-                return self
-                
-            def predict(self, X):
-                """Make predictions"""
-                return self.model.predict(X)
-                
-            def predict_proba(self, X):
-                """Get prediction probabilities"""
-                return self.model.predict_proba(X)
-                
-            def evaluate(self, X_test, y_test, verbose=False):
-                """Evaluate model performance"""
-                from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-                
-                y_pred = self.predict(X_test)
-                
-                # Calculate metrics
-                metrics = {
-                    'accuracy': accuracy_score(y_test, y_pred),
-                    'precision_macro': precision_score(y_test, y_pred, average='macro'),
-                    'recall_macro': recall_score(y_test, y_pred, average='macro'),
-                    'f1_macro': f1_score(y_test, y_pred, average='macro'),
-                    'f1_weighted': f1_score(y_test, y_pred, average='weighted')
-                }
-                
-                if verbose:
-                    for name, value in metrics.items():
-                        logger.info(f"{name}: {value:.4f}")
-                        
-                return metrics
-                
-            def get_feature_importance(self):
-                """Get feature importance"""
-                importances = self.model.feature_importances_
-                indices = np.argsort(importances)[::-1]
-                
-                feature_importance_df = pd.DataFrame({
-                    'feature': [self.feature_names[i] if self.feature_names else f"feature_{i}" for i in indices],
-                    'importance': importances[indices]
-                })
-                
-                return feature_importance_df
-                
-            def plot_feature_importance(self, top_n=20):
-                """Plot feature importance"""
-                import matplotlib.pyplot as plt
-                
-                # Get feature importance
-                importance_df = self.get_feature_importance()
-                
-                # Take top N features
-                if top_n and top_n < len(importance_df):
-                    importance_df = importance_df.head(top_n)
-                    
-                # Create plot
-                plt.figure(figsize=(10, 8))
-                plt.barh(importance_df['feature'], importance_df['importance'])
-                plt.xlabel('Importance')
-                plt.ylabel('Feature')
-                plt.title('Feature Importance')
-                plt.tight_layout()
-                
-                return plt.gcf()
-                
-            def save(self, filepath):
-                """Save model to disk"""
-                import joblib
-                joblib.dump(self, filepath)
-                logger.info(f"Model saved to {filepath}")
+        # Clear GPU cache
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.reset_peak_memory_stats()
         
-        # Create and train model
-        model = SimpleRandomForestClassifier(self.config)
-        model.feature_names = feature_names
-        
-        # Train with validation
-        model.fit(
-            X_train, y_train,
-            X_val, y_val,
-            verbose=True
+        # Create PyTorch datasets
+        train_dataset = TensorDataset(
+            torch.FloatTensor(X_train),
+            torch.LongTensor(y_train)
+        )
+        val_dataset = TensorDataset(
+            torch.FloatTensor(X_val),
+            torch.LongTensor(y_val)
         )
         
+        # Create data loaders
+        batch_size = getattr(self.config, 'batch_size', 256)
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
+        val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=0)
+        
+        # Create model
+        num_classes = len(np.unique(y_train))
+        input_dim = X_train.shape[1]
+        
+        model = TabularDeepClassifier(
+            input_dim=input_dim,
+            num_classes=num_classes,
+            hidden_dims=getattr(self.config, 'hidden_dims', [256, 128, 64]),
+            dropout_rate=getattr(self.config, 'dropout_rate', 0.3),
+            use_batch_norm=True
+        ).to(self.device)
+        
+        logger.info(f"Model created with {sum(p.numel() for p in model.parameters()):,} parameters")
+        
+        # Loss and optimizer
+        criterion = nn.CrossEntropyLoss()
+        learning_rate = getattr(self.config, 'learning_rate', 0.001)
+        optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-5)
+        
+        # Learning rate scheduler
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, mode='min', factor=0.5, patience=5, verbose=True
+        )
+        
+        # Training loop
+        num_epochs = getattr(self.config, 'num_epochs', 100)
+        best_val_loss = float('inf')
+        patience = getattr(self.config, 'patience', 15)
+        patience_counter = 0
+        
+        logger.info(f"Training for {num_epochs} epochs with batch size {batch_size}")
+        
+        for epoch in range(num_epochs):
+            # Training phase
+            model.train()
+            train_loss = 0.0
+            train_correct = 0
+            train_total = 0
+            
+            for batch_X, batch_y in train_loader:
+                batch_X, batch_y = batch_X.to(self.device), batch_y.to(self.device)
+                
+                optimizer.zero_grad()
+                outputs = model(batch_X)
+                loss = criterion(outputs, batch_y)
+                loss.backward()
+                optimizer.step()
+                
+                train_loss += loss.item() * batch_X.size(0)
+                _, predicted = torch.max(outputs.data, 1)
+                train_total += batch_y.size(0)
+                train_correct += (predicted == batch_y).sum().item()
+            
+            train_loss = train_loss / train_total
+            train_acc = train_correct / train_total
+            
+            # Validation phase
+            model.eval()
+            val_loss = 0.0
+            val_correct = 0
+            val_total = 0
+            
+            with torch.no_grad():
+                for batch_X, batch_y in val_loader:
+                    batch_X, batch_y = batch_X.to(self.device), batch_y.to(self.device)
+                    
+                    outputs = model(batch_X)
+                    loss = criterion(outputs, batch_y)
+                    
+                    val_loss += loss.item() * batch_X.size(0)
+                    _, predicted = torch.max(outputs.data, 1)
+                    val_total += batch_y.size(0)
+                    val_correct += (predicted == batch_y).sum().item()
+            
+            val_loss = val_loss / val_total
+            val_acc = val_correct / val_total
+            
+            # Store history
+            self.training_history['train_loss'].append(train_loss)
+            self.training_history['train_acc'].append(train_acc)
+            self.training_history['val_loss'].append(val_loss)
+            self.training_history['val_acc'].append(val_acc)
+            
+            # Learning rate scheduler step
+            scheduler.step(val_loss)
+            
+            # Logging
+            if (epoch + 1) % 5 == 0 or epoch == 0:
+                logger.info(f"Epoch [{epoch+1}/{num_epochs}] "
+                          f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}, "
+                          f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}")
+            
+            # Early stopping
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                patience_counter = 0
+                # Save best model
+                torch.save(model.state_dict(), Path(self.config.export_path).parent / 'best_model_checkpoint.pth')
+            else:
+                patience_counter += 1
+                if patience_counter >= patience:
+                    logger.info(f"Early stopping triggered at epoch {epoch+1}")
+                    break
+        
+        # Load best model
+        model.load_state_dict(torch.load(Path(self.config.export_path).parent / 'best_model_checkpoint.pth'))
+        
+        # Calculate training time
+        training_end_time = time.time()
+        self.training_time = training_end_time - training_start_time
+        
+        # Calculate peak memory usage
+        final_memory = process.memory_info().rss / 1024 / 1024  # MB
+        self.peak_memory_usage = final_memory - initial_memory
+        
+        # Get GPU memory usage
+        if torch.cuda.is_available():
+            self.gpu_memory_allocated = torch.cuda.max_memory_allocated() / 1024 / 1024  # MB
+            self.gpu_memory_reserved = torch.cuda.max_memory_reserved() / 1024 / 1024  # MB
+        
         logger.info("Model training completed successfully")
+        logger.info(f"Training time: {self.training_time:.2f} seconds ({self.training_time/60:.2f} minutes)")
+        logger.info(f"Peak CPU memory usage: {self.peak_memory_usage:.2f} MB")
+        if torch.cuda.is_available():
+            logger.info(f"Peak GPU memory allocated: {self.gpu_memory_allocated:.2f} MB")
+            logger.info(f"Peak GPU memory reserved: {self.gpu_memory_reserved:.2f} MB")
         
         return model
         
-    def evaluate_model(self, model: RandomForestClassifier, 
+    def evaluate_model(self, model: nn.Module, 
                       X_test: np.ndarray, y_test: np.ndarray) -> Dict[str, Any]:
         """
-        Evaluate the trained model.
+        Evaluate the trained PyTorch model.
         
         Args:
-            model (RandomForestClassifier): Trained model
+            model (nn.Module): Trained PyTorch model
             X_test (np.ndarray): Test features
             y_test (np.ndarray): Test targets
             
         Returns:
             Dict[str, Any]: Evaluation metrics
         """
-        logger.info("Evaluating model performance...")
+        logger.info("Evaluating model performance on GPU...")
         
-        # Get predictions
-        y_pred = model.predict(X_test)
-        y_proba = model.predict_proba(X_test)
+        model.eval()
+        
+        # Start tracking inference time
+        inference_start_time = time.time()
+        
+        # Convert to tensors and move to device
+        X_test_tensor = torch.FloatTensor(X_test).to(self.device)
+        
+        # Get predictions in batches
+        batch_size = 1024
+        all_probs = []
+        all_preds = []
+        
+        with torch.no_grad():
+            for i in range(0, len(X_test_tensor), batch_size):
+                batch = X_test_tensor[i:i+batch_size]
+                outputs = model(batch)
+                probs = F.softmax(outputs, dim=1)
+                preds = torch.argmax(outputs, dim=1)
+                
+                all_probs.append(probs.cpu().numpy())
+                all_preds.append(preds.cpu().numpy())
+        
+        y_proba = np.vstack(all_probs)
+        y_pred = np.concatenate(all_preds)
+        
+        # Calculate inference time
+        inference_end_time = time.time()
+        self.inference_time = inference_end_time - inference_start_time
+        
+        # Calculate inference metrics
+        num_samples = len(X_test)
+        avg_inference_time_per_sample = (self.inference_time / num_samples) * 1000  # ms
+        throughput = num_samples / self.inference_time  # samples/sec
+        
+        logger.info(f"Inference time: {self.inference_time:.4f} seconds")
+        logger.info(f"Average inference time per sample: {avg_inference_time_per_sample:.4f} ms")
+        logger.info(f"Throughput: {throughput:.2f} samples/second")
         
         # Calculate metrics
-        metrics = model.evaluate(X_test, y_test, verbose=True)
+        from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+        
+        metrics = {
+            'accuracy': accuracy_score(y_test, y_pred),
+            'precision_macro': precision_score(y_test, y_pred, average='macro', zero_division=0),
+            'recall_macro': recall_score(y_test, y_pred, average='macro', zero_division=0),
+            'f1_macro': f1_score(y_test, y_pred, average='macro', zero_division=0),
+            'f1_weighted': f1_score(y_test, y_pred, average='weighted', zero_division=0),
+            'inference_time_total': self.inference_time,
+            'inference_time_per_sample_ms': avg_inference_time_per_sample,
+            'throughput_samples_per_sec': throughput,
+            'training_time_total': self.training_time,
+            'training_time_minutes': self.training_time / 60,
+            'peak_cpu_memory_mb': self.peak_memory_usage,
+            'peak_gpu_memory_allocated_mb': self.gpu_memory_allocated,
+            'peak_gpu_memory_reserved_mb': self.gpu_memory_reserved
+        }
+        
+        for name, value in metrics.items():
+            logger.info(f"{name}: {value:.4f}")
         
         # Generate classification report
-        class_report = classification_report(y_test, y_pred, output_dict=True)
+        class_names = self.label_encoder.classes_
+        class_report = classification_report(y_test, y_pred, target_names=class_names, output_dict=True)
         
         # Generate confusion matrix
         conf_matrix = confusion_matrix(y_test, y_pred)
         
-        # Feature importance
-        feature_importance = model.get_feature_importance()
-        
-        # Out-of-bag score if available
-        oob_score = None
-        if hasattr(model.model, 'oob_score_'):
-            oob_score = model.model.oob_score_
-            logger.info(f"Out-of-bag score: {oob_score:.4f}")
+        # Calculate ROC AUC for each class
+        roc_auc_scores = {}
+        try:
+            for i, class_name in enumerate(class_names):
+                y_test_binary = (y_test == i).astype(int)
+                roc_auc_scores[class_name] = roc_auc_score(y_test_binary, y_proba[:, i])
+        except Exception as e:
+            logger.warning(f"Could not calculate ROC AUC: {e}")
             
         evaluation_results = {
             'metrics': metrics,
             'classification_report': class_report,
             'confusion_matrix': conf_matrix.tolist(),
-            'feature_importance': feature_importance.to_dict('records'),
-            'training_history': model.training_history,
-            'oob_score': oob_score
+            'training_history': self.training_history,
+            'roc_auc_scores': roc_auc_scores,
+            'y_pred': y_pred,
+            'y_proba': y_proba,
+            'y_test': y_test
         }
         
         return evaluation_results
         
-    def generate_plots(self, model: RandomForestClassifier, 
+    def generate_plots(self, model: nn.Module, 
                       evaluation_results: Dict[str, Any]) -> None:
         """
-        Generate and save visualization plots.
+        Generate and save visualization plots including ROC curves.
         
         Args:
-            model (RandomForestClassifier): Trained model
+            model (nn.Module): Trained PyTorch model
             evaluation_results (Dict[str, Any]): Evaluation results
         """
         logger.info("Generating visualization plots...")
         
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        plots_dir = Path("C:\\Users\\dicla\\Research_Internship_Under_Dr_Rakesh_Matam\\Project_3\\RandomForestClassifier\\plots")
-        plots_dir.mkdir(parents=True, exist_ok=True)
-        
-        # 1. Feature Importance Plot
+        # 1. Training and Validation Curves
         try:
-            fig = model.plot_feature_importance(top_n=20)
-            plt.savefig(plots_dir / f"feature_importance_{timestamp}.png", dpi=300, bbox_inches='tight')
-            plt.close()
-            logger.info("Feature importance plot saved")
-        except Exception as e:
-            logger.warning(f"Could not generate feature importance plot: {e}")
+            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5))
             
-        # 2. Confusion Matrix Plot
+            epochs = range(1, len(self.training_history['train_loss']) + 1)
+            
+            # Loss curves
+            ax1.plot(epochs, self.training_history['train_loss'], 'b-', label='Training Loss')
+            ax1.plot(epochs, self.training_history['val_loss'], 'r-', label='Validation Loss')
+            ax1.set_xlabel('Epoch')
+            ax1.set_ylabel('Loss')
+            ax1.set_title('Training and Validation Loss')
+            ax1.legend()
+            ax1.grid(True, alpha=0.3)
+            
+            # Accuracy curves
+            ax2.plot(epochs, self.training_history['train_acc'], 'b-', label='Training Accuracy')
+            ax2.plot(epochs, self.training_history['val_acc'], 'r-', label='Validation Accuracy')
+            ax2.set_xlabel('Epoch')
+            ax2.set_ylabel('Accuracy')
+            ax2.set_title('Training and Validation Accuracy')
+            ax2.legend()
+            ax2.grid(True, alpha=0.3)
+            
+            plt.tight_layout()
+            plt.savefig(self.results_dir / "training_curves.png", dpi=300, bbox_inches='tight')
+            plt.close()
+            logger.info("Training curves saved")
+        except Exception as e:
+            logger.warning(f"Could not generate training curves: {e}")
+            
+        # 2. Confusion Matrix
         try:
             conf_matrix = np.array(evaluation_results['confusion_matrix'])
             plt.figure(figsize=(10, 8))
-            sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues')
+            sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues',
+                       xticklabels=self.label_encoder.classes_,
+                       yticklabels=self.label_encoder.classes_)
             plt.title('Confusion Matrix')
             plt.ylabel('True Label')
             plt.xlabel('Predicted Label')
-            plt.savefig(plots_dir / f"confusion_matrix_{timestamp}.png", dpi=300, bbox_inches='tight')
+            plt.tight_layout()
+            plt.savefig(self.results_dir / "confusion_matrix.png", dpi=300, bbox_inches='tight')
             plt.close()
-            logger.info("Confusion matrix plot saved")
+            logger.info("Confusion matrix saved")
         except Exception as e:
-            logger.warning(f"Could not generate confusion matrix plot: {e}")
+            logger.warning(f"Could not generate confusion matrix: {e}")
             
-        # 3. Tree Depth Distribution (if available)
+        # 3. ROC Curves for each class
         try:
-            if hasattr(model.model, 'estimators_'):
-                depths = [tree.get_depth() for tree in model.model.estimators_]
-                plt.figure(figsize=(10, 6))
-                plt.hist(depths, bins=20, alpha=0.7, edgecolor='black')
-                plt.xlabel('Tree Depth')
-                plt.ylabel('Number of Trees')
-                plt.title('Distribution of Tree Depths in Random Forest')
-                plt.axvline(np.mean(depths), color='red', linestyle='--', 
-                           label=f'Mean Depth: {np.mean(depths):.2f}')
-                plt.legend()
-                plt.tight_layout()
-                plt.savefig(plots_dir / f"tree_depth_distribution_{timestamp}.png", dpi=300, bbox_inches='tight')
-                plt.close()
-                logger.info("Tree depth distribution plot saved")
-        except Exception as e:
-            logger.warning(f"Could not generate tree depth plot: {e}")
+            y_test = evaluation_results['y_test']
+            y_proba = evaluation_results['y_proba']
+            class_names = self.label_encoder.classes_
+            n_classes = len(class_names)
             
-    def save_results(self, model: Any, 
+            # Compute ROC curve and AUC for each class
+            fpr = dict()
+            tpr = dict()
+            roc_auc = dict()
+            
+            for i in range(n_classes):
+                y_test_binary = (y_test == i).astype(int)
+                fpr[i], tpr[i], _ = roc_curve(y_test_binary, y_proba[:, i])
+                roc_auc[i] = auc(fpr[i], tpr[i])
+            
+            # Plot ROC curves
+            plt.figure(figsize=(10, 8))
+            colors = plt.cm.Set3(np.linspace(0, 1, n_classes))
+            
+            for i, color in enumerate(colors):
+                plt.plot(fpr[i], tpr[i], color=color, lw=2,
+                        label=f'{class_names[i]} (AUC = {roc_auc[i]:.4f})')
+            
+            plt.plot([0, 1], [0, 1], 'k--', lw=2, label='Random Classifier')
+            plt.xlim([0.0, 1.0])
+            plt.ylim([0.0, 1.05])
+            plt.xlabel('False Positive Rate')
+            plt.ylabel('True Positive Rate')
+            plt.title('ROC Curves - Multiclass Classification')
+            plt.legend(loc="lower right")
+            plt.grid(True, alpha=0.3)
+            plt.tight_layout()
+            plt.savefig(self.results_dir / "roc_curves.png", dpi=300, bbox_inches='tight')
+            plt.close()
+            logger.info("ROC curves saved")
+        except Exception as e:
+            logger.warning(f"Could not generate ROC curves: {e}")
+            
+    def save_results(self, model: nn.Module, 
                     evaluation_results: Dict[str, Any]) -> None:
         """
-        Save model and results.
+        Save PyTorch model and results with timestamp organization.
         
         Args:
-            model (Any): Trained model
+            model (nn.Module): Trained PyTorch model
             evaluation_results (Dict[str, Any]): Evaluation results
         """
         logger.info("Saving model and results...")
         
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        # Save PyTorch model
+        model_dir = Path(self.config.export_path).parent
+        model_dir.mkdir(parents=True, exist_ok=True)
         
-        # Save model
-        models_dir = Path("C:\\Users\\dicla\\Research_Internship_Under_Dr_Rakesh_Matam\\Project_3\\RandomForestClassifier\\models\\saved_Models")
-        models_dir.mkdir(parents=True, exist_ok=True)
+        model_path = model_dir / Path(self.config.export_path).name.replace('.joblib', '.pth')
+        torch.save({
+            'model_state_dict': model.state_dict(),
+            'config': self.config,
+            'label_encoder': self.label_encoder,
+            'scaler': self.scaler,
+            'training_history': self.training_history
+        }, model_path)
         
-        # Use the export_path from config to get the model name
-        model_filename = Path(self.config.export_path).name
-        model_path = models_dir / model_filename
+        logger.info(f"PyTorch model saved to: {model_path}")
         
-        # For our custom wrapper, save just the sklearn model
-        if hasattr(model, 'model'):
-            logger.info("Saving the sklearn model from our wrapper")
-            import joblib
-            joblib.dump(model.model, model_path)
-        else:
-            # Fall back to saving whole model
-            logger.info("Saving the entire model")
-            model.save(model_path)
+        # Save classification metrics CSV
+        class_names = self.label_encoder.classes_
+        metrics_data = []
         
-        # Save final model with timestamp
-        final_model_path = models_dir / f"{Path(model_filename).stem}_final_{timestamp}.joblib"
-        if hasattr(model, 'model'):
-            import joblib
-            joblib.dump(model.model, final_model_path)
-        else:
-            model.save(final_model_path)
+        for class_name in class_names:
+            if class_name in evaluation_results['classification_report']:
+                class_metrics = evaluation_results['classification_report'][class_name]
+                roc_auc = evaluation_results['roc_auc_scores'].get(class_name, 0.0)
+                metrics_data.append({
+                    'Class': class_name,
+                    'Accuracy': evaluation_results['metrics']['accuracy'],
+                    'Precision': class_metrics['precision'],
+                    'Recall': class_metrics['recall'],
+                    'F1 Score': class_metrics['f1-score'],
+                    'ROC AUC': round(roc_auc, 4)
+                })
         
-        # Save evaluation results
-        outputs_dir = Path("C:\\Users\\dicla\\Research_Internship_Under_Dr_Rakesh_Matam\\Project_3\\RandomForestClassifier\\outputs")
-        outputs_dir.mkdir(parents=True, exist_ok=True)
-        results_path = outputs_dir / f"evaluation_results_{timestamp}.joblib"
-        import joblib
-        joblib.dump(evaluation_results, results_path)
+        # Add overall metrics
+        metrics_data.append({
+            'Class': 'Overall',
+            'Accuracy': evaluation_results['metrics']['accuracy'],
+            'Precision': evaluation_results['metrics']['precision_macro'],
+            'Recall': evaluation_results['metrics']['recall_macro'],
+            'F1 Score': evaluation_results['metrics']['f1_macro'],
+            'ROC AUC': np.mean(list(evaluation_results['roc_auc_scores'].values()))
+        })
         
-        # Save metrics as CSV
-        logs_dir = Path("C:\\Users\\dicla\\Research_Internship_Under_Dr_Rakesh_Matam\\Project_3\\RandomForestClassifier\\logs")
-        metrics_csv_path = logs_dir / f"training_metrics_{timestamp}.csv"
-        metrics_df = pd.DataFrame([evaluation_results['metrics']])
+        metrics_df = pd.DataFrame(metrics_data)
+        metrics_csv_path = self.results_dir / "classification_metrics.csv"
         metrics_df.to_csv(metrics_csv_path, index=False)
+        logger.info(f"Classification metrics saved to: {metrics_csv_path}")
         
-        logger.info(f"Model saved to: {model_path}")
-        logger.info(f"Final model saved to: {final_model_path}")
-        logger.info(f"Results saved to: {results_path}")
-        logger.info(f"Metrics saved to: {metrics_csv_path}")
+        # Save performance metrics CSV
+        performance_data = [{
+            'Metric': 'Training Time (seconds)',
+            'Value': f"{self.training_time:.4f}"
+        }, {
+            'Metric': 'Training Time (minutes)',
+            'Value': f"{self.training_time / 60:.4f}"
+        }, {
+            'Metric': 'Inference Time (seconds)',
+            'Value': f"{self.inference_time:.4f}"
+        }, {
+            'Metric': 'Inference Time per Sample (ms)',
+            'Value': f"{evaluation_results['metrics']['inference_time_per_sample_ms']:.4f}"
+        }, {
+            'Metric': 'Throughput (samples/sec)',
+            'Value': f"{evaluation_results['metrics']['throughput_samples_per_sec']:.2f}"
+        }, {
+            'Metric': 'Peak CPU Memory Usage (MB)',
+            'Value': f"{self.peak_memory_usage:.2f}"
+        }, {
+            'Metric': 'Peak GPU Memory Allocated (MB)',
+            'Value': f"{self.gpu_memory_allocated:.2f}"
+        }, {
+            'Metric': 'Peak GPU Memory Reserved (MB)',
+            'Value': f"{self.gpu_memory_reserved:.2f}"
+        }]
+        
+        performance_df = pd.DataFrame(performance_data)
+        performance_csv_path = self.results_dir / "performance_metrics.csv"
+        performance_df.to_csv(performance_csv_path, index=False)
+        logger.info(f"Performance metrics saved to: {performance_csv_path}")
+        
+        # Save detailed classification report
+        report_path = self.results_dir / "classification_report.txt"
+        with open(report_path, 'w') as f:
+            f.write("=" * 80 + "\n")
+            f.write("PYTORCH GPU-ACCELERATED MULTICLASS CLASSIFICATION REPORT\n")
+            f.write("=" * 80 + "\n\n")
+            f.write(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"Device: {self.device}\n")
+            f.write(f"GPU: {torch.cuda.get_device_name(0)}\n\n")
+            
+            f.write("=" * 80 + "\n")
+            f.write("PERFORMANCE METRICS\n")
+            f.write("=" * 80 + "\n\n")
+            f.write(f"Training Time: {self.training_time:.4f} seconds ({self.training_time/60:.4f} minutes)\n")
+            f.write(f"Inference Time: {self.inference_time:.4f} seconds\n")
+            f.write(f"Inference Time per Sample: {evaluation_results['metrics']['inference_time_per_sample_ms']:.4f} ms\n")
+            f.write(f"Throughput: {evaluation_results['metrics']['throughput_samples_per_sec']:.2f} samples/second\n\n")
+            
+            f.write("Memory Usage:\n")
+            f.write(f"  Peak CPU Memory: {self.peak_memory_usage:.2f} MB\n")
+            f.write(f"  Peak GPU Memory Allocated: {self.gpu_memory_allocated:.2f} MB\n")
+            f.write(f"  Peak GPU Memory Reserved: {self.gpu_memory_reserved:.2f} MB\n\n")
+            
+            f.write("=" * 80 + "\n")
+            f.write("MODEL ARCHITECTURE\n")
+            f.write("=" * 80 + "\n\n")
+            f.write(f"Input Dimension: {self.config.input_dim}\n")
+            f.write(f"Number of Classes: {self.config.num_classes}\n")
+            f.write(f"Hidden Layers: {getattr(self.config, 'hidden_dims', [256, 128, 64])}\n")
+            f.write(f"Dropout Rate: {getattr(self.config, 'dropout_rate', 0.3)}\n\n")
+            
+            f.write("=" * 80 + "\n")
+            f.write("TRAINING CONFIGURATION\n")
+            f.write("=" * 80 + "\n\n")
+            f.write(f"Epochs Trained: {len(self.training_history['train_loss'])}\n")
+            f.write(f"Batch Size: {getattr(self.config, 'batch_size', 256)}\n")
+            f.write(f"Learning Rate: {getattr(self.config, 'learning_rate', 0.001)}\n")
+            f.write(f"Best Validation Accuracy: {max(self.training_history['val_acc']):.4f}\n\n")
+            
+            f.write("=" * 80 + "\n")
+            f.write("CLASSIFICATION METRICS\n")
+            f.write("=" * 80 + "\n\n")
+            for metric, value in evaluation_results['metrics'].items():
+                if not metric.startswith(('inference_', 'training_', 'peak_', 'throughput')):
+                    f.write(f"  {metric}: {value:.4f}\n")
+            
+            f.write("\n" + "=" * 80 + "\n")
+            f.write("Per-Class Metrics:\n")
+            f.write("=" * 80 + "\n\n")
+            
+            for class_name in class_names:
+                if class_name in evaluation_results['classification_report']:
+                    f.write(f"{class_name}:\n")
+                    class_metrics = evaluation_results['classification_report'][class_name]
+                    f.write(f"  Precision: {class_metrics['precision']:.4f}\n")
+                    f.write(f"  Recall: {class_metrics['recall']:.4f}\n")
+                    f.write(f"  F1-Score: {class_metrics['f1-score']:.4f}\n")
+                    f.write(f"  Support: {class_metrics['support']}\n")
+                    if class_name in evaluation_results['roc_auc_scores']:
+                        f.write(f"  ROC AUC: {evaluation_results['roc_auc_scores'][class_name]:.4f}\n")
+                    f.write("\n")
+        
+        logger.info(f"Detailed report saved to: {report_path}")
+        
+        # Save full results as joblib
+        results_joblib_path = self.results_dir / "evaluation_results.joblib"
+        joblib.dump(evaluation_results, results_joblib_path)
+        logger.info(f"Full results saved to: {results_joblib_path}")
         
     def run_training(self, data_path: str) -> Dict[str, Any]:
         """
@@ -690,12 +1057,11 @@ class RandomForestTrainingPipeline:
 
 
 def main():
-    """Main function to run Random Forest training."""
+    """Main function to run PyTorch GPU training."""
     import argparse
     import yaml
-    from sklearn.ensemble import RandomForestClassifier as SklearnRandomForestClassifier
     
-    parser = argparse.ArgumentParser(description="Train Random Forest model")
+    parser = argparse.ArgumentParser(description="Train PyTorch GPU-accelerated classifier")
     parser.add_argument(
         "--config", 
         type=str, 
@@ -713,7 +1079,8 @@ def main():
     
     try:
         # Load configuration from YAML directly
-        with open(args.config, 'r') as f:
+        config_path = Path(__file__).parent.parent / args.config
+        with open(config_path, 'r') as f:
             config_data = yaml.safe_load(f)
         
         # Create a simple class to hold configuration
@@ -722,13 +1089,25 @@ def main():
                 for key, value in kwargs.items():
                     setattr(self, key, value)
         
-        # Create config object
+        # Create config object with default PyTorch training parameters
         config = SimpleConfig(**config_data)
         
-        # Add target column
+        # Add PyTorch-specific parameters
         config.target_column = 'label_stage_encoded'
-        logger.info(f"Configuration loaded from: {args.config}")
+        config.batch_size = 256
+        config.num_epochs = 100
+        config.learning_rate = 0.001
+        config.patience = 15
+        config.hidden_dims = [256, 128, 64]
+        config.dropout_rate = 0.3
+        
+        logger.info(f"Configuration loaded from: {config_path}")
         logger.info(f"Target column set to: {config.target_column}")
+        logger.info("PyTorch Training Parameters:")
+        logger.info(f"  Batch Size: {config.batch_size}")
+        logger.info(f"  Max Epochs: {config.num_epochs}")
+        logger.info(f"  Learning Rate: {config.learning_rate}")
+        logger.info(f"  Hidden Layers: {config.hidden_dims}")
         
         # Create pipeline with this config
         pipeline = RandomForestTrainingPipeline(config)
@@ -737,19 +1116,33 @@ def main():
         results = pipeline.run_training(args.data)
         
         # Print summary
-        print("\n" + "=" * 60)
-        print("TRAINING COMPLETED SUCCESSFULLY!")
-        print("=" * 60)
+        print("\n" + "=" * 80)
+        print("✓ PYTORCH GPU TRAINING COMPLETED SUCCESSFULLY!")
+        print("=" * 80)
+        print(f"Device Used: {pipeline.device}")
+        print(f"GPU: {torch.cuda.get_device_name(0)}")
+        print(f"\n--- PERFORMANCE METRICS ---")
+        print(f"Training Time: {pipeline.training_time:.2f} seconds ({pipeline.training_time/60:.2f} minutes)")
+        print(f"Inference Time: {pipeline.inference_time:.4f} seconds")
+        print(f"Inference Time per Sample: {results['metrics']['inference_time_per_sample_ms']:.4f} ms")
+        print(f"Throughput: {results['metrics']['throughput_samples_per_sec']:.2f} samples/second")
+        print(f"\nPeak CPU Memory Usage: {pipeline.peak_memory_usage:.2f} MB")
+        print(f"Peak GPU Memory Allocated: {pipeline.gpu_memory_allocated:.2f} MB")
+        print(f"Peak GPU Memory Reserved: {pipeline.gpu_memory_reserved:.2f} MB")
+        print(f"\n--- CLASSIFICATION METRICS ---")
         print(f"Final Test Accuracy: {results['metrics']['accuracy']:.4f}")
         print(f"F1-Score (Macro): {results['metrics']['f1_macro']:.4f}")
         print(f"F1-Score (Weighted): {results['metrics']['f1_weighted']:.4f}")
-        if results.get('oob_score'):
-            print(f"Out-of-Bag Score: {results['oob_score']:.4f}")
-        print(f"Log saved to: C:\\Users\\dicla\\Research_Internship_Under_Dr_Rakesh_Matam\\Project_3\\RandomForestClassifier\\logs\\{pipeline.log_filename}")
-        print("=" * 60)
+        print(f"Precision (Macro): {results['metrics']['precision_macro']:.4f}")
+        print(f"Recall (Macro): {results['metrics']['recall_macro']:.4f}")
+        print(f"\nResults saved to: {pipeline.results_dir}")
+        print(f"Log saved to: {Path(__file__).parent.parent}/logs/{pipeline.log_filename}")
+        print("=" * 80)
         
     except Exception as e:
         logger.error(f"Training failed: {str(e)}", exc_info=True)
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
 
 

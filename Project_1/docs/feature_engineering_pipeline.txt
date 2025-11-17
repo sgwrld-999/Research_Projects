@@ -1,0 +1,1079 @@
+═══════════════════════════════════════════════════════════════════════════════
+EDGE-IIOT FEATURE ENGINEERING PIPELINE
+COMPLETE DATA PROCESSING & FEATURE SELECTION GUIDE
+═══════════════════════════════════════════════════════════════════════════════
+
+Project: Adaptive Network Intrusion Detection System
+Dataset: Edge-IIoTset (IoT Network Intrusion Detection Dataset)
+Final Output: 20 Selected Features for Model Training
+Pipeline Location: Adaptive-Network-Intrusion-Detection-System/Dataset/
+
+═══════════════════════════════════════════════════════════════════════════════
+TABLE OF CONTENTS
+═══════════════════════════════════════════════════════════════════════════════
+
+1. RAW DATASET CHARACTERISTICS
+2. FEATURE ENGINEERING PIPELINE (61 → 45 → 20 Features)
+3. STEP-BY-STEP PROCESSING GUIDE
+4. FEATURE SELECTION METHODOLOGY
+5. FINAL 20 SELECTED FEATURES
+6. REPRODUCIBLE IMPLEMENTATION CODE
+7. FILE LOCATIONS & ARTIFACTS
+
+═══════════════════════════════════════════════════════════════════════════════
+SECTION 1: RAW DATASET CHARACTERISTICS
+═══════════════════════════════════════════════════════════════════════════════
+
+SOURCE DATA
+-----------
+- Dataset: Edge-IIoTset (Edge-based Industrial IoT Dataset)
+- Purpose: Network intrusion detection for IoT environments
+- Initial Features: 61 raw network packet features
+- Data Format: CSV files with network traffic captures
+- Labels: Binary (Normal/Attack) + Multi-class (Attack types)
+
+ATTACK TYPES (14 Categories)
+-----------------------------
+1. Backdoor attacks
+2. DDoS HTTP Flood
+3. DDoS ICMP Flood
+4. DDoS TCP SYN Flood
+5. DDoS UDP Flood
+6. Man-in-the-Middle (MITM)
+7. Ransomware
+8. OS Fingerprinting
+9. Password attacks
+10. Port Scanning
+11. SQL Injection
+12. Uploading attacks
+13. Vulnerability Scanner
+14. Cross-Site Scripting (XSS)
+
+RAW FEATURE CATEGORIES
+-----------------------
+- Network Layer: IP addresses, ARP fields
+- Transport Layer: TCP flags, ports, sequence numbers, UDP parameters
+- Application Layer: HTTP headers, DNS queries, MQTT protocol fields, Modbus TCP
+- Temporal: Frame timestamps
+- Metadata: Connection states, packet sizes
+
+═══════════════════════════════════════════════════════════════════════════════
+SECTION 2: FEATURE ENGINEERING PIPELINE OVERVIEW
+═══════════════════════════════════════════════════════════════════════════════
+
+PIPELINE STAGES
+---------------
+
+Stage 1: RAW DATA (61 features)
+   ↓
+Stage 2: DATA CLEANING & COLUMN REMOVAL (→ ~50 features)
+   ↓
+Stage 3: FEATURE ENGINEERING & TYPE CONVERSION (→ 48 features)
+   ↓
+Stage 4: ENCODING & IMPUTATION (→ 45 features)
+   ↓
+Stage 5: CORRELATION-BASED FILTERING (→ 45 features)
+   ↓
+Stage 6: SCALING & NORMALIZATION (→ 45 features)
+   ↓
+Stage 7: FEATURE SELECTION (MI + PCA) (→ 20 features)
+   ↓
+FINAL OUTPUT: 20 Selected Features (Ready for Model Training)
+
+═══════════════════════════════════════════════════════════════════════════════
+SECTION 3: STEP-BY-STEP PROCESSING GUIDE
+═══════════════════════════════════════════════════════════════════════════════
+
+STAGE 1: RAW DATA LOADING
+--------------------------
+Input: Edge-IIoTset CSV files
+Script: Dataset/scaling_and_normalisation.ipynb
+
+Initial Features (61 total):
+- Frame metadata: frame.time
+- IP layer: ip.src_host, ip.dst_host, arp.dst.proto_ipv4, arp.src.proto_ipv4, arp.opcode, arp.hw.size
+- ICMP: icmp.checksum, icmp.seq_le, icmp.transmit_timestamp, icmp.unused
+- HTTP: http.file_data, http.content_length, http.request.uri.query, http.request.method,
+        http.referer, http.request.full_uri, http.request.version, http.response, http.tls_port
+- TCP: tcp.ack, tcp.ack_raw, tcp.checksum, tcp.connection.fin, tcp.connection.rst,
+       tcp.connection.syn, tcp.connection.synack, tcp.dstport, tcp.flags, tcp.flags.ack,
+       tcp.len, tcp.options, tcp.payload, tcp.seq, tcp.srcport
+- UDP: udp.port, udp.stream, udp.time_delta
+- DNS: dns.qry.name, dns.qry.name.len, dns.qry.qu, dns.qry.type, 
+       dns.retransmission, dns.retransmit_request
+- MQTT: mqtt.conack.flags, mqtt.conflag.cleansess, mqtt.conflags, mqtt.hdrflags,
+        mqtt.len, mqtt.msg, mqtt.msg_decoded_as, mqtt.msgtype, mqtt.topic, 
+        mqtt.topic_len, mqtt.ver
+- Modbus: mbtcp.len, mbtcp.trans_id, mbtcp.unit_id
+- Labels: Attack_label, Attack_type
+
+---
+
+STAGE 2: DATA CLEANING & COLUMN REMOVAL
+----------------------------------------
+Objective: Remove non-generalizable and high-cardinality features
+
+TIMESTAMP PROCESSING:
+1. Split 'frame.time' into 'frame_year' and 'frame_date'
+2. Extract year and time components
+3. Drop both timestamp columns (reason: not useful for pattern generalization)
+
+COLUMNS REMOVED (16 features dropped):
+Category A - IP Addresses (Non-generalizable):
+  - ip.src_host
+  - ip.dst_host
+  - arp.dst.proto_ipv4
+  - arp.src.proto_ipv4
+
+Category B - High-cardinality Text (Too many unique values):
+  - tcp.payload
+  - dns.qry.name
+  - mqtt.msg
+  - mqtt.topic
+
+Category C - Timestamps (Dropped after extraction):
+  - frame.time
+  - frame_date
+  - frame_year
+
+Category D - Redundant/Verification Fields:
+  - tcp.checksum
+  - tcp.ack_raw
+  - tcp.options
+
+RATIONALE:
+- IP addresses: Change across networks, can't generalize to new environments
+- High-cardinality text: Millions of unique values, impossible to encode effectively
+- Timestamps: Absolute time not relevant; relative patterns captured by sequences
+- Redundant fields: Duplicates information or used only for packet verification
+
+Result: 61 - 16 = 45 features remaining
+
+---
+
+STAGE 3: FEATURE ENGINEERING & TYPE CONVERSION
+-----------------------------------------------
+Objective: Create meaningful features and ensure correct data types
+
+A. NUMERIC CONVERSION:
+   Features requiring type conversion:
+   - tcp.len: String → Numeric (with error='coerce' for invalid entries)
+   - dns.qry.name.len: String → Numeric
+   
+   Method: pd.to_numeric(df['feature'], errors='coerce')
+   Invalid entries → NaN (handled in next stage)
+
+B. PORT CATEGORIZATION (Feature Engineering):
+   Original Feature: tcp.dstport (continuous: 0-65535)
+   Problem: Too many unique values, hard to learn patterns
+   
+   Solution: Create tcp.dstport_category (3 categories)
+   
+   Categorization Logic:
+   ```python
+   def categorize_port(port):
+       if pd.isna(port):
+           return np.nan
+       elif port <= 1023:
+           return 0  # Well-known ports (HTTP, HTTPS, SSH, FTP, etc.)
+       elif port <= 49151:
+           return 1  # Registered ports (application-specific)
+       else:
+           return 2  # Dynamic/private ports (ephemeral)
+   ```
+   
+   Apply: df['tcp.dstport_category'] = df['tcp.dstport'].apply(categorize_port)
+   Drop: Original 'tcp.dstport' column
+   
+   Benefit: Reduces dimensionality while preserving port-level information
+
+Result: 45 features with correct types and engineered features
+
+---
+
+STAGE 4: ENCODING & MISSING VALUE IMPUTATION
+---------------------------------------------
+Objective: Handle categorical variables and missing data
+
+A. CATEGORICAL ENCODING:
+   Method: LabelEncoder (sklearn.preprocessing.LabelEncoder)
+   
+   Strategy:
+   - Identify categorical columns: df.select_dtypes(include=['object'])
+   - For each categorical column:
+     * If unique values < 10: Apply LabelEncoder
+     * If unique values >= 10: Drop column (too high cardinality)
+   
+   Code:
+   ```python
+   from sklearn.preprocessing import LabelEncoder
+   
+   categorical_cols = df.select_dtypes(include=['object']).columns
+   label_encoders = {}
+   
+   for col in categorical_cols:
+       if df[col].nunique() < 10:
+           le = LabelEncoder()
+           df[col] = le.fit_transform(df[col].astype(str))
+           label_encoders[col] = le  # Save for inference
+       else:
+           df.drop(columns=[col], inplace=True)
+   
+   joblib.dump(label_encoders, 'label_encoders.pkl')
+   ```
+   
+   Low-cardinality examples: tcp.flags (limited flag combinations), 
+                            mqtt.msgtype (14 message types)
+
+B. MISSING VALUE IMPUTATION:
+   Method: Median imputation (robust to outliers)
+   
+   Strategy:
+   - Calculate median for each numeric column
+   - Fill NaN values with median
+   - Preserve dataset size (no row deletion)
+   
+   Code:
+   ```python
+   df.fillna(df.median(numeric_only=True), inplace=True)
+   ```
+   
+   Rationale:
+   - Median > Mean (robust to outliers in network traffic)
+   - Preserves distribution better than mode for numeric features
+   - No information loss from dropping rows
+
+Result: 45 features, all numeric, no missing values
+
+---
+
+STAGE 5: CORRELATION-BASED FILTERING
+-------------------------------------
+Objective: Remove redundant features using correlation analysis
+
+Method: Pairwise correlation matrix with threshold filtering
+
+Process:
+1. Compute correlation matrix:
+   ```python
+   corr_matrix = df.corr().abs()
+   ```
+
+2. Extract upper triangle (avoid duplicates):
+   ```python
+   upper = corr_matrix.where(
+       np.triu(np.ones(corr_matrix.shape), k=1).astype(bool)
+   )
+   ```
+
+3. Find highly correlated pairs (threshold > 0.95):
+   ```python
+   to_drop = [column for column in upper.columns 
+              if any(upper[column] > 0.95)]
+   ```
+
+4. Drop redundant features:
+   ```python
+   df.drop(columns=to_drop, axis=1, inplace=True)
+   ```
+
+Threshold Justification:
+- 0.95 correlation = 95% linear relationship
+- Removes redundancy while preserving information
+- Example: tcp.seq and tcp.ack_raw often highly correlated
+
+Output: 
+- Correlation matrix saved: Dataset/text_outputs/correlation_matrix.txt
+- Feature heatmap: Dataset/plots/feature_correlation_heatmap.png
+
+Result: 45 features (some may be dropped if correlation > 0.95)
+
+---
+
+STAGE 6: SCALING & NORMALIZATION
+---------------------------------
+Objective: Normalize all features to common scale [0, 1]
+
+Method: MinMaxScaler (sklearn.preprocessing.MinMaxScaler)
+
+Formula: X_scaled = (X - X_min) / (X_max - X_min)
+
+Implementation:
+```python
+from sklearn.preprocessing import MinMaxScaler
+import joblib
+
+scaler = MinMaxScaler()
+df_scaled = scaler.fit_transform(df)
+df_scaled = pd.DataFrame(df_scaled, columns=df.columns)
+
+# Save for inference consistency
+joblib.dump(scaler, "scaler.pkl")
+
+# Save processed dataset
+df_scaled.to_csv('processed_training_dataset.csv', index=False)
+```
+
+Why MinMaxScaler?
+- Preserves zero values (important for binary flags)
+- No negative values (good for neural networks)
+- Interpretable range [0, 1]
+- Alternative: StandardScaler (mean=0, std=1) for some algorithms
+
+Output Files:
+- Dataset: processed_training_dataset.csv (45 features, 150,000+ samples)
+- Scaler: scaler.pkl (for consistent test/inference preprocessing)
+
+Result: 45 features, all scaled to [0, 1]
+
+---
+
+STAGE 7: FEATURE SELECTION (MI + PCA)
+--------------------------------------
+Objective: Select top 20 most informative features
+
+TWO-METHOD APPROACH:
+A. Mutual Information (MI)
+B. Principal Component Analysis (PCA)
+C. Combined Scoring
+
+═══════════════════════════════════════════════════════════════════════════════
+SECTION 4: FEATURE SELECTION METHODOLOGY
+═══════════════════════════════════════════════════════════════════════════════
+
+METHOD A: MUTUAL INFORMATION (MI) ANALYSIS
+-------------------------------------------
+Purpose: Measure statistical dependency between features and target label
+
+Theory:
+- Mutual Information quantifies how much knowing one variable reduces uncertainty about another
+- MI(X, Y) = 0: X and Y are independent
+- MI(X, Y) > 0: X provides information about Y
+- Higher MI = stronger relationship with attack detection
+
+Implementation:
+```python
+from sklearn.feature_selection import mutual_info_classif
+
+X = df.drop('Attack_label', axis=1)  # Features
+y = df['Attack_label']                # Target (0=Normal, 1=Attack)
+
+# Calculate MI scores
+mi_scores = mutual_info_classif(X, y, random_state=42)
+mi_scores = pd.Series(mi_scores, index=X.columns)
+mi_scores = mi_scores.sort_values(ascending=False)
+
+# Save results
+mi_scores.to_csv("text_outputs/mutual_information_scores.txt", 
+                 sep="\t", header=["Mutual Information Score"])
+```
+
+TOP 10 FEATURES BY MI SCORE:
+Rank | Feature                    | MI Score  | Interpretation
+-----|----------------------------|-----------|----------------------------------
+1.   | tcp.dstport_category       | 0.011610  | Port type strongly indicates attacks
+2.   | tcp.connection.rst         | 0.001473  | RST flags common in attack patterns
+3.   | mqtt.hdrflags              | 0.001217  | MQTT header anomalies
+4.   | tcp.connection.fin         | 0.001137  | FIN flag patterns differ in attacks
+5.   | mqtt.conflags              | 0.000860  | MQTT connection flag anomalies
+6.   | mqtt.conack.flags          | 0.000770  | MQTT acknowledgment variations
+7.   | mqtt.msgtype               | 0.000667  | Message type distribution shifts
+8.   | tcp.connection.syn         | 0.000603  | SYN flag patterns (SYN flood attacks)
+9.   | mqtt.conflag.cleansess     | 0.000587  | Clean session flag patterns
+10.  | tcp.srcport                | 0.000540  | Source port distributions
+
+Observations:
+- tcp.dstport_category dominates (10x higher than others)
+- TCP connection flags are highly informative (RST, FIN, SYN)
+- MQTT protocol features are significant (IoT-specific attacks)
+- Many features have near-zero MI (not useful for classification)
+
+---
+
+METHOD B: PCA-BASED FEATURE IMPORTANCE
+---------------------------------------
+Purpose: Identify features contributing most to dataset variance
+
+Theory:
+- PCA finds directions (principal components) of maximum variance
+- First PC captures most variance in data
+- Features with high absolute loadings on PC1 contribute most to data structure
+- Complements MI by capturing intrinsic data patterns
+
+Implementation:
+```python
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+
+# Standardize first (PCA requirement)
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# Apply PCA
+pca = PCA()
+pca.fit(X_scaled)
+
+# Extract feature importance from PC1
+pca_importance = np.abs(pca.components_[0])
+pca_importance = pd.Series(pca_importance, index=X.columns)
+pca_importance = pca_importance.sort_values(ascending=False)
+
+# Save results
+pca_importance.to_csv("text_outputs/pca_feature_importance.txt",
+                      sep="\t", header=["PCA Loading (absolute value)"])
+```
+
+Variance Analysis:
+- Total variance explained by 95%: ~30 components needed
+- PC1 variance: ~15-20% of total
+- Cumulative plots saved: Dataset/plots/pca_cumulative_variance.png
+
+TOP 10 FEATURES BY PCA LOADING:
+Rank | Feature                    | PCA Loading | Interpretation
+-----|----------------------------|-------------|----------------------------------
+1.   | tcp.ack                    | 0.425450    | High variance in ACK values
+2.   | mbtcp.trans_id             | 0.412198    | Modbus transaction variations
+3.   | mqtt.ver                   | 0.395107    | MQTT version diversity
+4.   | mbtcp.len                  | 0.365724    | Modbus payload size variance
+5.   | tcp.connection.synack      | 0.365717    | SYN-ACK flag distributions
+6.   | mqtt.conflags              | 0.263354    | MQTT connection flag diversity
+7.   | mqtt.conack.flags          | 0.242497    | MQTT ACK flag variations
+8.   | http.tls_port              | 0.188339    | TLS port usage patterns
+9.   | tcp.srcport                | 0.126433    | Source port distribution
+10.  | tcp.dstport_category       | 0.121314    | Port category variance
+
+Observations:
+- tcp.ack has highest variance contribution
+- Industrial IoT protocols (Modbus, MQTT) dominate
+- Different ranking than MI (captures different information)
+- Some zero-MI features have high PCA (e.g., tcp.ack)
+
+---
+
+METHOD C: COMBINED SCORING APPROACH
+------------------------------------
+Purpose: Balance discriminative power (MI) and data structure (PCA)
+
+Formula:
+Combined_Score = 0.7 × MI_Normalized + 0.3 × PCA_Normalized
+
+Where:
+- MI_Normalized = (MI - MI_min) / (MI_max - MI_min)  → [0, 1]
+- PCA_Normalized = (PCA - PCA_min) / (PCA_max - PCA_min)  → [0, 1]
+
+Rationale:
+- 70% weight on MI: Prioritize features that directly help classification
+- 30% weight on PCA: Ensure selected features capture data variance
+- Balanced approach avoids overfitting to labels or ignoring data structure
+
+Implementation:
+```python
+# Normalize scores to [0, 1]
+mi_normalized = (mi_scores - mi_scores.min()) / (mi_scores.max() - mi_scores.min())
+pca_normalized = (pca_importance - pca_importance.min()) / (pca_importance.max() - pca_importance.min())
+
+# Combined scoring
+combined_scores = pd.DataFrame({
+    'MI_Score': mi_scores,
+    'PCA_Loading': pca_importance,
+    'MI_Normalized': mi_normalized,
+    'PCA_Normalized': pca_normalized
+})
+
+combined_scores['Combined_Score'] = (
+    0.7 * combined_scores['MI_Normalized'] + 
+    0.3 * combined_scores['PCA_Normalized']
+)
+
+# Sort by combined score
+combined_scores = combined_scores.sort_values('Combined_Score', ascending=False)
+
+# Select top 20 features
+top_20_features = combined_scores.head(20).index.tolist()
+```
+
+Selection Criteria:
+- Top 20 features by Combined_Score
+- Threshold: Natural gap after 20th feature
+- Ensures diversity (not all high-MI or high-PCA)
+
+═══════════════════════════════════════════════════════════════════════════════
+SECTION 5: FINAL 20 SELECTED FEATURES
+═══════════════════════════════════════════════════════════════════════════════
+
+COMPLETE FEATURE LIST WITH ANALYSIS
+------------------------------------
+
+Rank | Feature Name               | Combined  | MI Score  | PCA Load  | Category
+-----|----------------------------|-----------|-----------|-----------|------------------
+1.   | tcp.dstport_category       | 0.785543  | 0.011610  | 0.121314  | Network/Port
+2.   | mbtcp.trans_id             | 0.315778  | 0.000417  | 0.412198  | Industrial IoT
+3.   | tcp.ack                    | 0.300000  | 0.000000  | 0.425450  | TCP/Transport
+4.   | mqtt.ver                   | 0.288452  | 0.000163  | 0.395107  | IoT Protocol
+5.   | tcp.connection.synack      | 0.261698  | 0.000063  | 0.365717  | TCP Flags
+6.   | mbtcp.len                  | 0.257885  | 0.000000  | 0.365724  | Industrial IoT
+7.   | mqtt.conflags              | 0.237552  | 0.000860  | 0.263354  | IoT Protocol
+8.   | mqtt.conack.flags          | 0.217419  | 0.000770  | 0.242497  | IoT Protocol
+9.   | tcp.connection.rst         | 0.138396  | 0.001473  | 0.070290  | TCP Flags
+10.  | http.tls_port              | 0.132805  | 0.000000  | 0.188339  | Application
+11.  | tcp.srcport                | 0.121710  | 0.000540  | 0.126433  | Network/Port
+12.  | tcp.connection.fin         | 0.121154  | 0.001137  | 0.074626  | TCP Flags
+13.  | mqtt.hdrflags              | 0.091299  | 0.001217  | 0.025446  | IoT Protocol
+14.  | mqtt.msgtype               | 0.083697  | 0.000667  | 0.061693  | IoT Protocol
+15.  | tcp.flags.ack              | 0.076879  | 0.000230  | 0.089360  | TCP Flags
+16.  | tcp.connection.syn         | 0.067154  | 0.000603  | 0.043648  | TCP Flags
+17.  | mqtt.conflag.cleansess     | 0.062469  | 0.000587  | 0.038428  | IoT Protocol
+18.  | mqtt.topic_len             | 0.036831  | 0.000040  | 0.048812  | IoT Protocol
+19.  | mqtt.len                   | 0.034721  | 0.000220  | 0.030429  | IoT Protocol
+20.  | tcp.len                    | 0.022212  | 0.000080  | 0.024660  | TCP/Transport
+
+---
+
+FEATURE CATEGORIES BREAKDOWN
+-----------------------------
+
+TCP Connection Flags (6 features):
+- tcp.connection.synack     → SYN-ACK handshake indicator
+- tcp.connection.rst        → Reset flag (abrupt termination)
+- tcp.connection.fin        → FIN flag (graceful close)
+- tcp.flags.ack             → ACK flag status
+- tcp.connection.syn        → SYN flag (connection initiation)
+
+Transport Layer (3 features):
+- tcp.ack                   → TCP acknowledgment number
+- tcp.len                   → TCP segment length
+- tcp.srcport               → Source port number
+
+Network/Port Features (1 feature):
+- tcp.dstport_category      → Destination port category (0/1/2)
+
+MQTT Protocol (8 features):
+- mqtt.ver                  → MQTT protocol version
+- mqtt.conflags             → Connection flags
+- mqtt.conack.flags         → Connection acknowledgment flags
+- mqtt.hdrflags             → Header flags
+- mqtt.msgtype              → Message type identifier
+- mqtt.conflag.cleansess    → Clean session flag
+- mqtt.topic_len            → Topic name length
+- mqtt.len                  → MQTT payload length
+
+Modbus TCP (2 features):
+- mbtcp.trans_id            → Modbus transaction identifier
+- mbtcp.len                 → Modbus payload length
+
+Application Layer (1 feature):
+- http.tls_port             → TLS/HTTPS port indicator
+
+---
+
+FEATURE JUSTIFICATION & ATTACK RELEVANCE
+-----------------------------------------
+
+HIGH-PRIORITY FEATURES (Rank 1-5):
+
+1. tcp.dstport_category (Rank 1, Combined: 0.786)
+   - Why: Different attack types target different port ranges
+   - Well-known ports (0-1023): HTTP/HTTPS attacks, SSH brute force
+   - Registered ports (1024-49151): Application-specific exploits
+   - Dynamic ports (49152+): Backdoors, malware communication
+   - Strongest MI score indicates clear attack discrimination
+
+2. mbtcp.trans_id (Rank 2, Combined: 0.316)
+   - Why: Industrial IoT (IIoT) protocol indicator
+   - Normal: Sequential, predictable transaction IDs
+   - Attack: Randomized, replay attacks, protocol manipulation
+   - High PCA loading shows significant data variance
+
+3. tcp.ack (Rank 3, Combined: 0.300)
+   - Why: Critical for TCP state tracking
+   - Normal: Follows sequence rules
+   - Attack: ACK flooding, TCP hijacking, sequence prediction
+   - Highest PCA loading (0.425) indicates major variance source
+
+4. mqtt.ver (Rank 4, Combined: 0.288)
+   - Why: IoT protocol version fingerprinting
+   - Normal: Consistent version within network
+   - Attack: Version scanning, compatibility exploits
+   - High PCA (0.395) shows version diversity in dataset
+
+5. tcp.connection.synack (Rank 5, Combined: 0.262)
+   - Why: Three-way handshake anomaly detection
+   - Normal: SYN-ACK follows SYN
+   - Attack: SYN flood (no SYN-ACK), TCP scanning (unexpected SYN-ACK)
+   - High PCA (0.366) captures handshake patterns
+
+ATTACK-SPECIFIC INDICATORS:
+
+DDoS Attacks:
+- tcp.connection.syn       → SYN flood detection
+- tcp.connection.rst       → RST flood, connection kills
+- tcp.len                  → Packet size anomalies in floods
+
+Backdoor/Malware:
+- tcp.dstport_category     → Unusual port usage
+- tcp.srcport              → Random source port patterns
+- http.tls_port            → C&C communication over TLS
+
+IoT-Specific Attacks:
+- mqtt.* features (8)      → MQTT protocol exploitation
+- mbtcp.* features (2)     → Industrial control attacks
+
+Protocol Exploitation:
+- mqtt.msgtype             → Message type abuse
+- mqtt.hdrflags            → Header manipulation
+- tcp.flags.ack            → Flag combination attacks
+
+═══════════════════════════════════════════════════════════════════════════════
+SECTION 6: REPRODUCIBLE IMPLEMENTATION CODE
+═══════════════════════════════════════════════════════════════════════════════
+
+COMPLETE FEATURE ENGINEERING SCRIPT
+------------------------------------
+
+```python
+"""
+Edge-IIoT Feature Engineering Pipeline
+Processes raw network data to 20 selected features
+Author: ANIDS Project
+Version: 1.0
+"""
+
+import pandas as pd
+import numpy as np
+import joblib
+from sklearn.preprocessing import MinMaxScaler, LabelEncoder, StandardScaler
+from sklearn.feature_selection import mutual_info_classif
+from sklearn.decomposition import PCA
+import matplotlib.pyplot as plt
+import seaborn as sns
+import os
+
+# Configuration
+INPUT_FILE = "raw_edge_iiot_dataset.csv"
+OUTPUT_DIR = "processed_data"
+PLOTS_DIR = "plots"
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+os.makedirs(PLOTS_DIR, exist_ok=True)
+
+# ==============================================================================
+# STAGE 1: LOAD RAW DATA
+# ==============================================================================
+print("Stage 1: Loading raw data...")
+df = pd.read_csv(INPUT_FILE)
+print(f"Loaded {df.shape[0]} rows, {df.shape[1]} columns")
+
+# ==============================================================================
+# STAGE 2: DATA CLEANING & COLUMN REMOVAL
+# ==============================================================================
+print("\nStage 2: Data cleaning and column removal...")
+
+# Timestamp processing
+df['frame_year'] = df['frame.time'].str.strip().str.split(n=1, expand=True)[0]
+df['frame_date'] = df['frame.time'].str.strip().str.split(n=1, expand=True)[1]
+df['frame_year'] = df['frame_year'].apply(
+    lambda x: int(x) if str(x).isdigit() and len(str(x)) == 4 else x
+)
+
+# Define columns to drop
+columns_to_drop = [
+    # IP addresses
+    'ip.src_host', 'ip.dst_host', 'arp.dst.proto_ipv4', 'arp.src.proto_ipv4',
+    # High-cardinality text
+    'tcp.payload', 'dns.qry.name', 'mqtt.msg', 'mqtt.topic',
+    # Timestamps
+    'frame.time', 'frame_date', 'frame_year',
+    # Redundant fields
+    'tcp.checksum', 'tcp.ack_raw', 'tcp.options'
+]
+
+df.drop(columns=columns_to_drop, axis=1, inplace=True, errors='ignore')
+print(f"After removal: {df.shape[1]} columns")
+
+# ==============================================================================
+# STAGE 3: FEATURE ENGINEERING & TYPE CONVERSION
+# ==============================================================================
+print("\nStage 3: Feature engineering and type conversion...")
+
+# Convert to numeric
+df['tcp.len'] = pd.to_numeric(df['tcp.len'], errors='coerce')
+df['dns.qry.name.len'] = pd.to_numeric(df['dns.qry.name.len'], errors='coerce')
+
+# Port categorization
+if 'tcp.dstport' in df.columns:
+    df['tcp.dstport'] = pd.to_numeric(df['tcp.dstport'], errors='coerce')
+    
+    def categorize_port(port):
+        if pd.isna(port):
+            return np.nan
+        elif port <= 1023:
+            return 0  # Well-known ports
+        elif port <= 49151:
+            return 1  # Registered ports
+        else:
+            return 2  # Dynamic ports
+    
+    df['tcp.dstport_category'] = df['tcp.dstport'].apply(categorize_port)
+    df.drop('tcp.dstport', axis=1, inplace=True)
+    print("Created tcp.dstport_category feature")
+
+# ==============================================================================
+# STAGE 4: ENCODING & IMPUTATION
+# ==============================================================================
+print("\nStage 4: Categorical encoding and missing value imputation...")
+
+# Label encoding for low-cardinality categorical features
+categorical_cols = df.select_dtypes(include=['object']).columns
+label_encoders = {}
+
+for col in categorical_cols:
+    if col not in ['Attack_label', 'Attack_type']:  # Keep labels as-is
+        if df[col].nunique() < 10:
+            le = LabelEncoder()
+            df[col] = le.fit_transform(df[col].astype(str))
+            label_encoders[col] = le
+            print(f"Encoded: {col} ({df[col].nunique()} unique values)")
+        else:
+            df.drop(columns=[col], inplace=True)
+            print(f"Dropped high-cardinality: {col}")
+
+joblib.dump(label_encoders, f"{OUTPUT_DIR}/label_encoders.pkl")
+
+# Missing value imputation
+numeric_cols = df.select_dtypes(include=[np.number]).columns
+df[numeric_cols] = df[numeric_cols].fillna(df[numeric_cols].median())
+print(f"Imputed missing values in {len(numeric_cols)} numeric columns")
+
+# ==============================================================================
+# STAGE 5: CORRELATION-BASED FILTERING
+# ==============================================================================
+print("\nStage 5: Correlation-based feature filtering...")
+
+# Separate features and labels
+if 'Attack_label' in df.columns:
+    y = df['Attack_label']
+    X = df.drop(['Attack_label'], axis=1, errors='ignore')
+else:
+    y = None
+    X = df
+
+# Compute correlation matrix
+corr_matrix = X.corr().abs()
+upper = corr_matrix.where(
+    np.triu(np.ones(corr_matrix.shape), k=1).astype(bool)
+)
+
+# Find highly correlated features
+to_drop_corr = [column for column in upper.columns if any(upper[column] > 0.95)]
+X.drop(columns=to_drop_corr, axis=1, inplace=True)
+print(f"Dropped {len(to_drop_corr)} highly correlated features")
+print(f"Remaining features: {X.shape[1]}")
+
+# Save correlation matrix
+corr_matrix.to_csv(f"{OUTPUT_DIR}/correlation_matrix.txt", sep="\t")
+
+# Plot heatmap
+plt.figure(figsize=(12, 10))
+sns.heatmap(corr_matrix, cmap='coolwarm', center=0, annot=False)
+plt.title('Feature Correlation Heatmap')
+plt.tight_layout()
+plt.savefig(f"{PLOTS_DIR}/correlation_heatmap.png", dpi=300)
+plt.close()
+
+# ==============================================================================
+# STAGE 6: SCALING & NORMALIZATION
+# ==============================================================================
+print("\nStage 6: Feature scaling and normalization...")
+
+# MinMax scaling to [0, 1]
+scaler = MinMaxScaler()
+X_scaled = scaler.fit_transform(X)
+X_scaled = pd.DataFrame(X_scaled, columns=X.columns)
+
+joblib.dump(scaler, f"{OUTPUT_DIR}/minmax_scaler.pkl")
+print(f"Scaled {X_scaled.shape[1]} features to [0, 1] range")
+
+# Save processed dataset
+X_scaled.to_csv(f"{OUTPUT_DIR}/processed_training_dataset.csv", index=False)
+print(f"Saved: {OUTPUT_DIR}/processed_training_dataset.csv")
+
+# ==============================================================================
+# STAGE 7: FEATURE SELECTION (MI + PCA)
+# ==============================================================================
+print("\nStage 7: Feature selection using MI + PCA...")
+
+# Method A: Mutual Information
+if y is not None:
+    print("  Computing Mutual Information scores...")
+    mi_scores = mutual_info_classif(X_scaled, y, random_state=42)
+    mi_scores = pd.Series(mi_scores, index=X_scaled.columns)
+    mi_scores = mi_scores.sort_values(ascending=False)
+    
+    # Save MI scores
+    mi_scores.to_csv(
+        f"{OUTPUT_DIR}/mutual_information_scores.txt",
+        sep="\t",
+        header=["Mutual Information Score"]
+    )
+    
+    # Plot MI scores
+    plt.figure(figsize=(12, 8))
+    mi_scores.head(20).plot(kind='bar')
+    plt.title('Top 20 Features by Mutual Information')
+    plt.xlabel('Features')
+    plt.ylabel('MI Score')
+    plt.xticks(rotation=90)
+    plt.tight_layout()
+    plt.savefig(f"{PLOTS_DIR}/mutual_information_top20.png", dpi=300)
+    plt.close()
+else:
+    print("  Warning: No labels found, skipping MI analysis")
+    mi_scores = pd.Series(0, index=X_scaled.columns)
+
+# Method B: PCA
+print("  Computing PCA feature importance...")
+scaler_pca = StandardScaler()
+X_std = scaler_pca.fit_transform(X_scaled)
+
+pca = PCA()
+pca.fit(X_std)
+
+# Feature importance from PC1
+pca_importance = np.abs(pca.components_[0])
+pca_importance = pd.Series(pca_importance, index=X_scaled.columns)
+pca_importance = pca_importance.sort_values(ascending=False)
+
+# Save PCA importance
+pca_importance.to_csv(
+    f"{OUTPUT_DIR}/pca_feature_importance.txt",
+    sep="\t",
+    header=["PCA Loading (absolute value)"]
+)
+
+# Plot PCA variance
+plt.figure(figsize=(12, 5))
+
+plt.subplot(1, 2, 1)
+plt.plot(range(1, len(pca.explained_variance_ratio_) + 1),
+         pca.explained_variance_ratio_, 'o-')
+plt.title('Scree Plot')
+plt.xlabel('Principal Component')
+plt.ylabel('Variance Explained')
+plt.grid(True)
+
+plt.subplot(1, 2, 2)
+cumsum = np.cumsum(pca.explained_variance_ratio_)
+plt.plot(range(1, len(cumsum) + 1), cumsum, 'o-')
+plt.axhline(y=0.95, color='r', linestyle='--', label='95% variance')
+plt.title('Cumulative Variance Explained')
+plt.xlabel('Number of Components')
+plt.ylabel('Cumulative Variance')
+plt.legend()
+plt.grid(True)
+
+plt.tight_layout()
+plt.savefig(f"{PLOTS_DIR}/pca_variance_analysis.png", dpi=300)
+plt.close()
+
+# Method C: Combined Scoring
+print("  Computing combined MI-PCA scores...")
+
+# Normalize scores to [0, 1]
+mi_norm = (mi_scores - mi_scores.min()) / (mi_scores.max() - mi_scores.min())
+pca_norm = (pca_importance - pca_importance.min()) / (pca_importance.max() - pca_importance.min())
+
+# Combined score: 70% MI + 30% PCA
+combined = 0.7 * mi_norm + 0.3 * pca_norm
+combined = combined.sort_values(ascending=False)
+
+# Select top 20 features
+top_20_features = combined.head(20)
+
+# Save combined scores
+combined_df = pd.DataFrame({
+    'MI_Score': mi_scores,
+    'PCA_Loading': pca_importance,
+    'MI_Normalized': mi_norm,
+    'PCA_Normalized': pca_norm,
+    'Combined_Score': combined
+})
+combined_df = combined_df.sort_values('Combined_Score', ascending=False)
+combined_df.to_csv(f"{OUTPUT_DIR}/combined_feature_scores.txt", sep="\t")
+
+# Save top 20 feature list
+with open(f"{OUTPUT_DIR}/selected_20_features.txt", 'w') as f:
+    f.write("TOP 20 SELECTED FEATURES\n")
+    f.write("=" * 60 + "\n\n")
+    for i, (feature, score) in enumerate(top_20_features.items(), 1):
+        f.write(f"{i:2d}. {feature}\n")
+    f.write("\nComma-separated list:\n")
+    f.write(','.join(top_20_features.index.tolist()))
+
+# Create final dataset with 20 features
+X_final = X_scaled[top_20_features.index]
+X_final.to_csv(f"{OUTPUT_DIR}/final_20_features_dataset.csv", index=False)
+
+print(f"\n{'='*70}")
+print("FEATURE ENGINEERING PIPELINE COMPLETE")
+print(f"{'='*70}")
+print(f"\nFinal dataset shape: {X_final.shape}")
+print(f"Output directory: {OUTPUT_DIR}/")
+print("\nGenerated files:")
+print("  - processed_training_dataset.csv (45 features)")
+print("  - final_20_features_dataset.csv (20 features)")
+print("  - mutual_information_scores.txt")
+print("  - pca_feature_importance.txt")
+print("  - combined_feature_scores.txt")
+print("  - selected_20_features.txt")
+print("  - minmax_scaler.pkl")
+print("  - label_encoders.pkl")
+print("\nPlots generated:")
+print("  - correlation_heatmap.png")
+print("  - mutual_information_top20.png")
+print("  - pca_variance_analysis.png")
+
+# Display top 20 features
+print("\nTOP 20 SELECTED FEATURES:")
+print("=" * 70)
+for i, (feature, score) in enumerate(top_20_features.items(), 1):
+    mi_val = mi_scores[feature]
+    pca_val = pca_importance[feature]
+    print(f"{i:2d}. {feature:30s} | Combined: {score:.6f} | MI: {mi_val:.6f} | PCA: {pca_val:.6f}")
+```
+
+USAGE INSTRUCTIONS:
+-------------------
+1. Place your raw Edge-IIoT CSV file in the same directory
+2. Update INPUT_FILE variable with your filename
+3. Run: python feature_engineering_pipeline.py
+4. Check 'processed_data/' directory for outputs
+5. Use 'final_20_features_dataset.csv' for model training
+
+═══════════════════════════════════════════════════════════════════════════════
+SECTION 7: FILE LOCATIONS & ARTIFACTS
+═══════════════════════════════════════════════════════════════════════════════
+
+REPOSITORY STRUCTURE
+--------------------
+Adaptive-Network-Intrusion-Detection-System/
+│
+├── Dataset/                                    # Feature engineering workspace
+│   ├── scaling_and_normalisation.ipynb        # Main preprocessing notebook
+│   ├── normal.ipynb                            # Normal traffic analysis
+│   ├── feature_importance.tex                 # LaTeX report
+│   │
+│   ├── layer1_output/                          # Processed outputs
+│   │   ├── layer1_training_data.csv           # 13 features (old version)
+│   │   ├── layer1_features.txt                # Feature list
+│   │   ├── layer1_summary_report.txt          # Statistics
+│   │   └── scaler_layer1.pkl                  # MinMaxScaler object
+│   │
+│   ├── text_outputs/                           # Feature analysis results
+│   │   ├── feature_list.txt                   # Original 45 features
+│   │   ├── mutual_information_scores.txt      # MI scores for all features
+│   │   ├── pca_feature_importance.txt         # PCA loadings
+│   │   ├── correlation_matrix.txt             # Feature correlations
+│   │   └── pca_explained_variance.txt         # PCA variance breakdown
+│   │
+│   └── plots/                                  # Visualization outputs
+│       ├── feature_correlation_heatmap.png
+│       ├── mutual_information_distribution.png
+│       ├── pca_scree_plot.png
+│       ├── pca_cumulative_variance.png
+│       ├── pca_feature_importance.png
+│       ├── boxplots/                           # Feature distributions
+│       └── histograms/                         # Feature histograms
+│
+├── Dataset_Phase_2/                            # Attack-specific datasets
+│   ├── code.ipynb                              # Dataset merging script
+│   └── [14 attack type CSVs]                  # Individual attack datasets
+│
+├── Dataset_Phase_2_iteration_2/               # Balanced datasets
+│   └── balanced_dataset.csv
+│
+├── Dataset_Phase_2_iteration_3/               # Latest iteration
+│   └── Phase_2_Dataset.csv
+│
+└── Layer_2_iteration_7_iii/                   # Final implementation
+    ├── balanced_dataset_50k.csv               # 50k samples, 53 features
+    ├── adaptive_network_ids.py                # Final model script
+    ├── Phase-1_model.txt                      # VAE model summary
+    ├── Phase-2_model.txt                      # CNN+BiLSTM summary
+    └── Feature_Engineering_Pipeline_Complete.txt  # This document
+
+KEY OUTPUT FILES
+----------------
+
+FEATURE ANALYSIS:
+- Dataset/text_outputs/mutual_information_scores.txt
+  → MI scores for all 45 features, tab-separated
+
+- Dataset/text_outputs/pca_feature_importance.txt
+  → PCA loadings for all 45 features, tab-separated
+
+- Dataset/text_outputs/correlation_matrix.txt
+  → 45x45 correlation matrix, tab-separated
+
+- Dataset/text_outputs/feature_list.txt
+  → List of all 45 features after Stage 6
+
+DATASETS:
+- Dataset/layer1_output/layer1_training_data.csv
+  → 150,000 samples × 13 features (old 13-feature version)
+
+- processed_data/processed_training_dataset.csv
+  → 150,000 samples × 45 features (after Stage 6)
+
+- processed_data/final_20_features_dataset.csv
+  → 150,000 samples × 20 features (FINAL for training)
+
+ARTIFACTS:
+- Dataset/layer1_output/scaler_layer1.pkl
+  → MinMaxScaler fitted on 13 features
+
+- processed_data/minmax_scaler.pkl
+  → MinMaxScaler fitted on 20 features (use this)
+
+- processed_data/label_encoders.pkl
+  → Dictionary of LabelEncoder objects for categorical features
+
+VISUALIZATIONS:
+- Dataset/plots/feature_correlation_heatmap.png
+- Dataset/plots/pca_scree_plot.png
+- Dataset/plots/pca_cumulative_variance.png
+- Dataset/plots/mutual_information_distribution.png
+
+═══════════════════════════════════════════════════════════════════════════════
+QUICK REFERENCE: 20 SELECTED FEATURES
+═══════════════════════════════════════════════════════════════════════════════
+
+Copy-paste ready feature list:
+-------------------------------
+tcp.dstport_category,mbtcp.trans_id,tcp.ack,mqtt.ver,tcp.connection.synack,mbtcp.len,mqtt.conflags,mqtt.conack.flags,tcp.connection.rst,http.tls_port,tcp.srcport,tcp.connection.fin,mqtt.hdrflags,mqtt.msgtype,tcp.flags.ack,tcp.connection.syn,mqtt.conflag.cleansess,mqtt.topic_len,mqtt.len,tcp.len
+
+Python list format:
+-------------------
+selected_features = [
+    'tcp.dstport_category', 'mbtcp.trans_id', 'tcp.ack', 'mqtt.ver',
+    'tcp.connection.synack', 'mbtcp.len', 'mqtt.conflags', 'mqtt.conack.flags',
+    'tcp.connection.rst', 'http.tls_port', 'tcp.srcport', 'tcp.connection.fin',
+    'mqtt.hdrflags', 'mqtt.msgtype', 'tcp.flags.ack', 'tcp.connection.syn',
+    'mqtt.conflag.cleansess', 'mqtt.topic_len', 'mqtt.len', 'tcp.len'
+]
+
+Data types:
+-----------
+- All features are numeric (float64 or int64 after preprocessing)
+- All values scaled to [0, 1] range using MinMaxScaler
+- No missing values after imputation
+- Ready for direct input to neural networks
+
+═══════════════════════════════════════════════════════════════════════════════
+END OF FEATURE ENGINEERING PIPELINE DOCUMENTATION
+═══════════════════════════════════════════════════════════════════════════════
+
+For model implementation details, see:
+- Phase-1_model.txt (VAE architecture)
+- Phase-2_model.txt (CNN+BiLSTM architecture)
+
+Last updated: November 2025
+Maintained by: ANIDS Project Team

@@ -246,10 +246,10 @@ class XGBoostModelBuilder:
         # Remove None values
         xgb_params = {k: v for k, v in xgb_params.items() if v is not None}
         
-        # Enable GPU if specified
+        # Enable GPU if specified (XGBoost 3.1+ uses 'device' instead of 'gpu_id' and 'hist' instead of 'gpu_hist')
         if self.config.tree_method == 'gpu_hist':
-            xgb_params['tree_method'] = 'gpu_hist'
-            xgb_params['gpu_id'] = 0
+            xgb_params['tree_method'] = 'hist'  # In XGBoost 3.1+, use 'hist' with device parameter
+            xgb_params['device'] = 'cuda:0'
             logger.info("GPU acceleration enabled for XGBoost")
         else:
             xgb_params['tree_method'] = 'hist'  # Use histogram-based algorithm for speed

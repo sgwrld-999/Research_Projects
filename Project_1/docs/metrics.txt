@@ -1,0 +1,148 @@
+---
+
+# ** Complete Metrics & Plots Documentation for VAE–BiLSTM IDS**
+
+This document summarizes **all evaluation metrics** and **all plots** used in the two-phase VAE–BiLSTM Intrusion Detection System (IDS). It is divided into **Phase-1 (Unsupervised)** and **Phase-2 (Supervised)**, along with a complete figure inventory.
+
+---
+
+# **1. COMPLETE LIST OF METRICS BY PHASE**
+
+---
+
+## ** PHASE-1: Unsupervised Anomaly Detection (VAE)**
+
+Phase-1 evaluates how well the **Variational Autoencoder (VAE)** identifies anomalous traffic using reconstruction loss and KDE-based thresholding.
+
+### **1. Reconstruction Loss**
+
+* Measures per-sample reconstruction error between input and reconstructed output.
+* Higher loss indicates a greater likelihood of anomaly.
+
+### **2. KDE-Based Threshold (T)**
+
+* Threshold automatically computed from the **second derivative of the tail probability** of reconstruction error distribution.
+* Used to classify:
+
+  * **Loss ≤ T → Normal**
+  * **Loss > T → Attack**
+
+### **3. Detection Rate (Recall / TPR)**
+
+* Measures how many attacks are correctly detected.
+* `TPR = TP / (TP + FN)`
+
+### **4. False Positive Rate (FPR)**
+
+* Measures benign flows incorrectly classified as attacks.
+* `FPR = FP / (FP + TN)`
+
+### **5. True Negative Rate (TNR / Specificity)**
+
+* Measures benign traffic correctly identified as benign.
+* `TNR = TN / (TN + FP)`
+
+### **6. Sensitivity**
+
+* Equivalent to Recall/TPR.
+* Evaluates model’s ability to detect malicious behavior.
+
+### **7. Confusion Matrix (TP, FP, TN, FN)**
+
+* Provides exact classification counts:
+
+  * **TP**: Attacks correctly detected
+  * **TN**: Normal traffic correctly identified
+  * **FP**: Normal traffic incorrectly flagged
+  * **FN**: Missed attacks
+
+### **8. ROC Curve & AUC (Implied Standard)**
+
+* Based on reconstruction-loss scores.
+* Measures threshold-independent detection capability.
+
+---
+
+## ** PHASE-2: Supervised Attack Classification (CNN–BiLSTM)**
+
+Phase-2 evaluates the **CNN–BiLSTM classifier** that predicts attack vs benign using latent vectors from Phase-1.
+
+### **1. Accuracy**
+
+* Overall correctness of predictions.
+
+### **2. Precision**
+
+* Proportion of predicted attacks that are truly attacks.
+* `Precision = TP / (TP + FP)`
+
+### **3. Recall (TPR / Sensitivity)**
+
+* Ability to identify all actual attacks.
+* `Recall = TP / (TP + FN)`
+
+### **4. F1-Score**
+
+* Harmonic mean of Precision and Recall.
+* Good for imbalanced datasets.
+
+### **5. False Positive Rate (FPR)**
+
+* Benign → Attack misclassification rate.
+
+### **6. True Negative Rate (Specificity)**
+
+* Benign → Benign classification rate.
+
+### **7. Confusion Matrix (TP, FP, TN, FN)**
+
+* Summarizes classification quality.
+
+### **8. Weighted Metrics**
+
+* Weighted Precision
+* Weighted Recall
+* Weighted F1-score
+* Adjusted for class imbalance.
+
+### **9. Training & Validation Accuracy Curve**
+
+* Shows model’s learning progression per epoch.
+
+### **10. Training & Validation Loss Curve**
+
+* Indicates convergence behavior and overfitting detection.
+
+### **11. K-Fold Cross-Validation Stability**
+
+* Evaluates consistency across k folds.
+* Paper reports **variance < 0.5%**.
+
+---
+
+# **2. COMPLETE PLOT INVENTORY**
+
+Below is the exhaustive list of all plots used in the paper.
+
+---
+
+## ** Plot List**
+
+| No. | Plot Name                                  | Phase         | In Paper? |
+| --- | ------------------------------------------ | ------------- | --------- |
+| 1   | Reconstruction Loss Distribution (KDE + T) | Phase-1       | Yes       |
+| 2   | Tail Probability 2nd-Derivative Curve      | Phase-1       | Implied   |
+| 3   | Mutual Information Distribution            | Preprocessing | Yes       |
+| 4   | PCA Feature Importance                     | Preprocessing | Yes       |
+| 5   | PCA Cumulative Variance                    | Preprocessing | Yes       |
+| 6   | PCA Scree Plot                             | Preprocessing | Yes       |
+| 7   | Training Accuracy Curve                    | Phase-2       | Yes       |
+| 8   | Training Loss Curve                        | Phase-2       | Yes       |
+| 9   | K-Fold Performance Plot                    | Phase-2       | Yes       |
+| 10  | Confusion Matrix                           | Phase-2       | Yes       |
+| 11  | Classification Report Table                | Phase-2       | Yes       |
+| 12  | Framework Architecture Diagram             | Overview      | Yes       |
+
+
+---
+

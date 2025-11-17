@@ -1,0 +1,27 @@
+{
+  "0": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1-score": 0.0,
+    "support": 0.0
+  },
+  "1": {
+    "precision": 1.0,
+    "recall": 0.808885,
+    "f1-score": 0.8943465173297362,
+    "support": 200000.0
+  },
+  "accuracy": 0.808885,
+  "macro avg": {
+    "precision": 0.5,
+    "recall": 0.4044425,
+    "f1-score": 0.4471732586648681,
+    "support": 200000.0
+  },
+  "weighted avg": {
+    "precision": 1.0,
+    "recall": 0.808885,
+    "f1-score": 0.8943465173297362,
+    "support": 200000.0
+  }
+}

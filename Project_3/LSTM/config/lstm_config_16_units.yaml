@@ -1,0 +1,31 @@
+# LSTM Model Configuration - 16 Units
+# =========================================================
+
+# === Core Architecture Parameters ===
+input_dim: 14 # Number of features per time step
+seq_len: 64 # Number of time steps in sequence
+num_classes: 5 # Classification categories
+lstm_units: 16 # Reduced to 16 units
+num_layers: 2 # Stack depth
+
+# === Regularization Configuration ===
+dropout: 0.2 # Dropout rate
+bidirectional: true # Process sequences in both directions
+
+# === Training Hyperparameters ===
+learning_rate: 0.001 # Adam optimizer step size
+batch_size: 64 # Batch size
+epochs: 50 # Maximum training iterations
+validation_split: 0.2 # Fraction for validation
+early_stopping_patience: 10 # Stop if no improvement
+
+# === Monitoring and Evaluation ===
+metrics: # Performance metrics to track
+  - accuracy
+  - val_loss
+  - precision
+  - recall
+  - f1_score
+
+# === Model Persistence ===
+export_path: "models/saved_Models/lstm_16_units.keras"

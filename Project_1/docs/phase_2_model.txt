@@ -1,0 +1,60 @@
+Phase-2 (Layer-2) Model Summary
+
+Source: `Adaptive-Network-Intrusion-Detection-System/Layer_2_iteration_7_iii/adaptive_network_ids.py`
+
+Model type:
+- Supervised sequence classifier using a hybrid CNN + BiLSTM architecture (`ANIDS` class).
+
+Data preprocessing / input shape:
+- `DataLoader.process(file_path, seq_length=10)` reads CSV and constructs sliding windows of length 10:
+  - `X_seq` shape: (n_seq, seq_length, num_features)
+  - `y_seq`: label for the final timestep in each sequence (int), converted to one-hot categorical before training.
+- Default dataset used by script: `Layer_2_iteration_7_iii/balanced_dataset_50k.csv`.
+
+Model architecture (created by `create_model`):
+- Input: shape = sequence length × features (e.g., (10, num_features)).
+- 1D Convolution block: `Conv1D(filters=28, kernel_size=3, activation='relu', padding='same')` + `BatchNormalization` + `MaxPooling1D(pool_size=2)` + `Dropout(rate=0.35)`.
+- Bidirectional LSTM: `Bidirectional(LSTM(units=29, return_sequences=True))`.
+- Temporal pooling: `GlobalAveragePooling1D()` to collapse time dimension.
+- Dense classification head: `Dense(units=19, activation='relu', kernel_regularizer=l2(2.9e-5))` + `BatchNormalization` + `Dropout(0.35)`.
+- Output: `Dense(num_classes, activation='softmax')`.
+
+Training settings:
+- Hyperparameters stored in `self.params`:
+  - `filters`: 28
+  - `kernel_size`: 3
+  - `lstm_units`: 29
+  - `dense_units`: 19
+  - `dropout_rate`: 0.35
+  - `learning_rate`: 7.9e-4
+  - `l2_reg`: 2.9e-5
+  - `batch_size`: 16
+- Optimizer: Adam with learning_rate = 7.9e-4.
+- Loss: `categorical_crossentropy`, metric: `accuracy`.
+- Main `train` flow:
+  - Splits final 20% of data as validation (simple holdout from end of sequence-split data), uses `tf.data` pipelines with shuffling and prefetch.
+  - Epochs: up to 30 with callbacks:
+    - `EarlyStopping(patience=5, restore_best_weights=True)`
+    - `ModelCheckpoint("checkpoints/best_model.keras", save_best_only=True)`
+  - Batch size: 16.
+
+Evaluation:
+- K-fold evaluation implemented in `evaluate` (k default 3):
+  - For each fold the code rebuilds and trains a fresh model (clearing session), fits for 5 epochs (in the `evaluate` loop), and computes fold accuracy and Matthews correlation coefficient (MCC).
+  - Per-fold confusion matrices and an overall confusion matrix are saved to `performance_plots/` (and a classification report is saved as `performance_plots/classification_report.txt`).
+  - Returns mean ± std for `accuracy` and `mcc` across folds.
+
+Saving & artifacts:
+- Best checkpoint saved during training: `checkpoints/best_model.keras`.
+- Final save path from `save()` method: `saved_models/model_{timestamp}.keras`.
+- Model architecture diagram: `performance_plots/model_architecture.png` (generated via `tf.keras.utils.plot_model`).
+- Training/evaluation plots: `performance_plots/training_history.png`, `performance_plots/confusion_matrices.png`, `performance_plots/overall_confusion_matrix.png`, `performance_plots/fold_performance.png`.
+
+How Phase-2 output is intended to be used:
+- Phase-2 consumes sliding windows of Layer-1 (or raw features) sequences and performs multi-class attack classification. The architecture is designed for temporal patterns (CNN feature extraction + BiLSTM sequence modeling) and outputs class probabilities (softmax).
+
+Important file locations referenced by script:
+- Script: `Adaptive-Network-Intrusion-Detection-System/Layer_2_iteration_7_iii/adaptive_network_ids.py`
+- Default dataset: `Adaptive-Network-Intrusion-Detection-System/Layer_2_iteration_7_iii/balanced_dataset_50k.csv`
+- Checkpoints & plots: `Adaptive-Network-Intrusion-Detection-System/Layer_2_iteration_7_iii/checkpoints/`, `performance_plots/`
+- Saved models: `Adaptive-Network-Intrusion-Detection-System/Layer_2_iteration_7_iii/saved_models/`

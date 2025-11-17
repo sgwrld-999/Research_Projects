@@ -495,11 +495,11 @@ class XGBoostConfig(BaseModel):
             'verbose': self.verbose
         }
         
-        # Add GPU support if specified
+        # Add GPU support if specified (XGBoost 3.1+ uses 'device' instead of 'gpu_id' and 'hist' instead of 'gpu_hist')
         if self.gpu_id >= 0:
-            xgb_params['gpu_id'] = self.gpu_id
-            if self.tree_method == 'auto':
-                xgb_params['tree_method'] = 'gpu_hist'
+            xgb_params['device'] = f'cuda:{self.gpu_id}'
+            if self.tree_method == 'auto' or self.tree_method == 'gpu_hist':
+                xgb_params['tree_method'] = 'hist'  # In XGBoost 3.1+, use 'hist' with device parameter
         
         # Remove None values and objective-specific adjustments
         xgb_params = {k: v for k, v in xgb_params.items() if v is not None}

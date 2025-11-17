@@ -1,0 +1,596 @@
+title: "GRIFFIN: Group-Regularized Intrusion Flow Feature Integration Network - End-to-End Workflow"
+direction: right
+
+// ===== DATA ACQUISITION & PREPROCESSING =====
+RawDatasets: {
+  label: "Raw IoT Datasets"
+  shape: cylinder
+  style.bold: true
+  style.font-size: 18
+  style.fill: "#e3f2fd"
+  
+  CICIoT: {
+    label: "CICIoT2023\n(1.14M flows, 34 classes)"
+    shape: rectangle
+    style.font-size: 14
+  }
+  
+  EdgeIIoT: {
+    label: "Edge-IIoT\n(10% sample)"
+    shape: rectangle
+    style.font-size: 14
+  }
+  
+  IOMT: {
+    label: "IoMT Dataset\n(Medical IoT)"
+    shape: rectangle
+    style.font-size: 14
+  }
+}
+
+// ===== DATA CLEANING =====
+DataCleaning: {
+  label: "Data Cleaning\n& Validation"
+  shape: rectangle
+  style.bold: true
+  style.font-size: 18
+  style.fill: "#fff3e0"
+  
+  RemoveDuplicates: {
+    label: "Remove\nDuplicates"
+    shape: rectangle
+    style.font-size: 15
+  }
+  
+  HandleInfinity: {
+    label: "Handle Infinity\n(clip to ±1e10)"
+    shape: rectangle
+    style.font-size: 15
+  }
+  
+  HandleNaN: {
+    label: "Fill NaN\nwith 0"
+    shape: rectangle
+    style.font-size: 15
+  }
+  
+  RemoveConstant: {
+    label: "Remove Constant\nFeatures (variance < 1e-6)"
+    shape: rectangle
+    style.font-size: 15
+  }
+}
+
+// ===== FEATURE ENGINEERING =====
+FeatureEngineering: {
+  label: "Feature Engineering\n& Organization"
+  shape: rectangle
+  style.bold: true
+  style.font-size: 18
+  style.fill: "#f3e5f5"
+  
+  ColumnNormalization: {
+    label: "Column Name\nNormalization"
+    shape: rectangle
+    style.font-size: 15
+  }
+  
+  FeatureSelection: {
+    label: "Feature Selection\n(47 → 39 features)"
+    shape: rectangle
+    style.font-size: 15
+  }
+  
+  LabelEncoding: {
+    label: "Label Encoding\n(String → Integer)"
+    shape: rectangle
+    style.font-size: 15
+  }
+  
+  StandardScaling: {
+    label: "StandardScaler\nNormalization"
+    shape: rectangle
+    style.font-size: 15
+  }
+}
+
+// ===== FEATURE GROUPING =====
+FeatureGroups: {
+  label: "Semantic Feature Groups\n(Domain-Driven Organization)"
+  shape: rectangle
+  style.bold: true
+  style.font-size: 18
+  style.fill: "#e8f5e9"
+  
+  Group1: {
+    label: "Group 1: Packet Statistics\n(7 features)\nmin, max, avg, std, totsum,\ntotsize, headerlength"
+    shape: rectangle
+    style.font-size: 14
+    style.fill: "#c8e6c9"
+  }
+  
+  Group2: {
+    label: "Group 2: Inter-arrival Times\n(8 features)\niat, flowduration, duration,\ntemporal variance"
+    shape: rectangle
+    style.font-size: 14
+    style.fill: "#c8e6c9"
+  }
+  
+  Group3: {
+    label: "Group 3: Flow Duration/Rates\n(9 features)\nrate, srate, variance,\nthroughput measures"
+    shape: rectangle
+    style.font-size: 14
+    style.fill: "#c8e6c9"
+  }
+  
+  Group4: {
+    label: "Group 4: TCP Flags/States\n(8 features)\nFIN, SYN, RST, PSH, ACK flags,\nconnection states"
+    shape: rectangle
+    style.font-size: 14
+    style.fill: "#c8e6c9"
+  }
+  
+  Group5: {
+    label: "Group 5: Protocol/Port Info\n(7 features)\nprotocol type, http, https, dns,\nssh, tcp, udp"
+    shape: rectangle
+    style.font-size: 14
+    style.fill: "#c8e6c9"
+  }
+}
+
+// ===== DATA SPLITTING =====
+DataSplit: {
+  label: "Stratified Data Split"
+  shape: rectangle
+  style.bold: true
+  style.font-size: 18
+  style.fill: "#fce4ec"
+  
+  Train: {
+    label: "Train Set\n(60%)"
+    shape: rectangle
+    style.font-size: 15
+  }
+  
+  Val: {
+    label: "Validation Set\n(20%)"
+    shape: rectangle
+    style.font-size: 15
+  }
+  
+  Test: {
+    label: "Test Set\n(20%)"
+    shape: rectangle
+    style.font-size: 15
+  }
+}
+
+// ===== PROTOCOL-AWARE GROUP GATE =====
+GroupGate: {
+  label: "Protocol-Aware Group Gate\n(Novel Architecture Component)"
+  shape: rectangle
+  style.bold: true
+  style.font-size: 18
+  style.fill: "#e1f5fe"
+  
+  GateNetwork: {
+    label: "Gate Network\nInput(39) → Linear(39,10)\n→ ReLU → Linear(10,5)\n→ Sigmoid"
+    shape: rectangle
+    style.font-size: 15
+    style.fill: "#b3e5fc"
+  }
+  
+  GroupWeights: {
+    label: "Group Attention Weights\ng ∈ [0,1]⁵"
+    shape: hexagon
+    style.font-size: 15
+    style.fill: "#81d4fa"
+  }
+  
+  ExpandWeights: {
+    label: "Expand Weights\nto Feature Dims"
+    shape: rectangle
+    style.font-size: 15
+    style.fill: "#b3e5fc"
+  }
+  
+  ElementWiseMult: {
+    label: "Element-wise\nMultiplication\nx̃ = x ⊙ expand(g)"
+    shape: rectangle
+    style.font-size: 15
+    style.fill: "#b3e5fc"
+  }
+}
+
+// ===== MLP BACKBONE =====
+MLPBackbone: {
+  label: "MLP Backbone Network"
+  shape: rectangle
+  style.bold: true
+  style.font-size: 18
+  style.fill: "#fff9c4"
+  
+  Layer1: {
+    label: "Hidden Layer 1\nLinear(39, 128)\n+ ReLU + Dropout(0.3)"
+    shape: rectangle
+    style.font-size: 15
+    style.fill: "#fff59d"
+  }
+  
+  Layer2: {
+    label: "Hidden Layer 2\nLinear(128, 64)\n+ ReLU + Dropout(0.2)"
+    shape: rectangle
+    style.font-size: 15
+    style.fill: "#fff59d"
+  }
+  
+  OutputLayer: {
+    label: "Output Layer\nLinear(64, 2)\n(Binary Classification)"
+    shape: rectangle
+    style.font-size: 15
+    style.fill: "#fff59d"
+  }
+}
+
+// ===== LOSS FUNCTION =====
+LossFunction: {
+  label: "Multi-Objective Loss Function"
+  shape: rectangle
+  style.bold: true
+  style.font-size: 18
+  style.fill: "#ffebee"
+  
+  FocalLoss: {
+    label: "Focal Loss\n(γ=2, auto α)\nHandles class imbalance\n96.4% benign vs 3.6% attack"
+    shape: rectangle
+    style.font-size: 14
+    style.fill: "#ffcdd2"
+  }
+  
+  GroupLasso: {
+    label: "Group Lasso\nRegularization\n(λ₁ = 0.01)\nPromotes group sparsity"
+    shape: rectangle
+    style.font-size: 14
+    style.fill: "#ffcdd2"
+  }
+  
+  L2Reg: {
+    label: "L2 Weight Decay\n(λ₂ = 0.0001)\nGeneralization"
+    shape: rectangle
+    style.font-size: 14
+    style.fill: "#ffcdd2"
+  }
+  
+  TotalLoss: {
+    label: "Total Loss\nℒ = ℒfocal + λ₁ℛgroup + λ₂ℛweight"
+    shape: hexagon
+    style.font-size: 15
+    style.fill: "#ef9a9a"
+  }
+}
+
+// ===== TRAINING =====
+Training: {
+  label: "Training Process"
+  shape: rectangle
+  style.bold: true
+  style.font-size: 18
+  style.fill: "#e0f2f1"
+  
+  Optimizer: {
+    label: "AdamW Optimizer\nLR: 0.001, WD: 0.0001"
+    shape: rectangle
+    style.font-size: 15
+  }
+  
+  Scheduler: {
+    label: "Cosine Annealing\nScheduler\nT_max=50, eta_min=1e-5"
+    shape: rectangle
+    style.font-size: 15
+  }
+  
+  EarlyStopping: {
+    label: "Early Stopping\nPatience: 15 epochs"
+    shape: rectangle
+    style.font-size: 15
+  }
+}
+
+// ===== PREDICTION =====
+Prediction: {
+  label: "Prediction Output"
+  shape: hexagon
+  style.bold: true
+  style.font-size: 18
+  style.fill: "#f3e5f5"
+}
+
+// ===== EVALUATION =====
+Evaluation: {
+  label: "Comprehensive Evaluation"
+  shape: rectangle
+  style.bold: true
+  style.font-size: 18
+  style.fill: "#fce4ec"
+  
+  BasicMetrics: {
+    label: "Basic Metrics\nAccuracy: 99.96%\nPrecision, Recall, F1: 0.942"
+    shape: rectangle
+    style.font-size: 14
+  }
+  
+  SpecializedMetrics: {
+    label: "IDS Metrics\nFPR: 0.04%\nFNR, ROC-AUC"
+    shape: rectangle
+    style.font-size: 14
+  }
+  
+  Calibration: {
+    label: "Temperature Scaling\nCalibration"
+    shape: rectangle
+    style.font-size: 14
+  }
+  
+  Visualization: {
+    label: "Plots & Analysis\nConfusion Matrix, ROC,\nGate Activation Heatmap"
+    shape: rectangle
+    style.font-size: 14
+  }
+}
+
+// ===== OUTPUT =====
+FinalOutput: {
+  label: "Final Output"
+  shape: rectangle
+  style.bold: true
+  style.font-size: 18
+  style.fill: "#c8e6c9"
+  
+  BenignTraffic: {
+    label: "Benign Traffic\n(Normal)"
+    shape: rectangle
+    style.font-size: 15
+    style.fill: "#a5d6a7"
+  }
+  
+  AttackDetected: {
+    label: "Attack Detected\n(34 attack classes)"
+    shape: rectangle
+    style.font-size: 15
+    style.fill: "#ef5350"
+  }
+  
+  ModelArtifacts: {
+    label: "Model Artifacts\nBest Model, Checkpoints,\nTraining Logs"
+    shape: rectangle
+    style.font-size: 15
+    style.fill: "#90caf9"
+  }
+}
+
+// ===== WORKFLOW CONNECTIONS =====
+
+// Data flow
+RawDatasets -> DataCleaning: {
+  label: "Load CSV files"
+  style.bold: true
+  style.font-size: 13
+}
+
+// Data Cleaning internal flow
+DataCleaning.RemoveDuplicates -> DataCleaning.HandleInfinity
+DataCleaning.HandleInfinity -> DataCleaning.HandleNaN
+DataCleaning.HandleNaN -> DataCleaning.RemoveConstant
+
+DataCleaning -> FeatureEngineering: {
+  label: "Cleaned data"
+  style.bold: true
+  style.font-size: 13
+}
+
+// Feature Engineering internal flow
+FeatureEngineering.ColumnNormalization -> FeatureEngineering.FeatureSelection
+FeatureEngineering.FeatureSelection -> FeatureEngineering.LabelEncoding
+FeatureEngineering.LabelEncoding -> FeatureEngineering.StandardScaling
+
+FeatureEngineering -> FeatureGroups: {
+  label: "39 features organized"
+  style.bold: true
+  style.font-size: 13
+}
+
+FeatureGroups -> DataSplit: {
+  label: "Semantic grouping complete"
+  style.bold: true
+  style.font-size: 13
+}
+
+// Data Split internal flow  
+DataSplit.Train -> Training: {
+  label: "Training data"
+  style.stroke: "#4caf50"
+  style.bold: true
+  style.font-size: 13
+}
+
+DataSplit.Val -> Training: {
+  label: "Validation data"
+  style.stroke: "#ff9800"
+  style.bold: true
+  style.font-size: 13
+}
+
+DataSplit.Test -> Evaluation: {
+  label: "Test data"
+  style.stroke: "#2196f3"
+  style.bold: true
+  style.font-size: 13
+}
+
+// Model Architecture Flow
+DataSplit -> GroupGate: {
+  label: "Input features (batch_size, 39)"
+  style.bold: true
+  style.font-size: 13
+}
+
+// Group Gate internal flow
+GroupGate.GateNetwork -> GroupGate.GroupWeights
+GroupGate.GroupWeights -> GroupGate.ExpandWeights
+GroupGate.ExpandWeights -> GroupGate.ElementWiseMult
+
+GroupGate -> MLPBackbone: {
+  label: "Gated features x̃"
+  style.stroke: "#00bcd4"
+  style.bold: true
+  style.font-size: 13
+}
+
+// MLP Backbone internal flow
+MLPBackbone.Layer1 -> MLPBackbone.Layer2
+MLPBackbone.Layer2 -> MLPBackbone.OutputLayer
+
+MLPBackbone -> Prediction: {
+  label: "Logits (batch_size, 2)"
+  style.bold: true
+  style.font-size: 13
+}
+
+// Loss Function Flow
+Prediction -> LossFunction: {
+  label: "Predictions & Targets"
+  style.bold: true
+  style.font-size: 13
+}
+
+// Loss Function internal flow
+LossFunction.FocalLoss -> LossFunction.TotalLoss
+LossFunction.GroupLasso -> LossFunction.TotalLoss
+LossFunction.L2Reg -> LossFunction.TotalLoss
+
+LossFunction -> Training: {
+  label: "Backpropagation"
+  style.stroke: "#e91e63"
+  style.bold: true
+  style.font-size: 13
+  style.animated: true
+}
+
+// Training internal flow
+Training.Optimizer -> Training.Scheduler
+Training.Scheduler -> Training.EarlyStopping
+
+// Evaluation Flow
+Prediction -> Evaluation: {
+  label: "Test predictions"
+  style.bold: true
+  style.font-size: 13
+}
+
+// Evaluation internal flow
+Evaluation.BasicMetrics -> Evaluation.SpecializedMetrics
+Evaluation.SpecializedMetrics -> Evaluation.Calibration
+Evaluation.Calibration -> Evaluation.Visualization
+
+Evaluation -> FinalOutput: {
+  label: "Evaluation complete"
+  style.bold: true
+  style.font-size: 13
+}
+
+// Final Classification
+Prediction -> FinalOutput.BenignTraffic: {
+  label: "Class 0\n(No attack detected)"
+  style.stroke: "#4caf50"
+  style.bold: true
+  style.font-size: 13
+}
+
+Prediction -> FinalOutput.AttackDetected: {
+  label: "Class 1\n(Attack detected)"
+  style.stroke: "#f44336"
+  style.bold: true
+  style.font-size: 13
+}
+
+Training -> FinalOutput.ModelArtifacts: {
+  label: "Save trained model"
+  style.bold: true
+  style.font-size: 13
+}
+
+// Key Performance Annotations
+PerformanceBox: {
+  label: "Key Performance Metrics"
+  shape: rectangle
+  style.bold: true
+  style.font-size: 16
+  style.fill: "#fff9c4"
+  style.stroke: "#f57c00"
+  style.stroke-width: 3
+  
+  Metric1: {
+    label: "✓ Accuracy: 99.96%"
+    shape: text
+    style.font-size: 14
+  }
+  
+  Metric2: {
+    label: "✓ False Positive Rate: 0.04%"
+    shape: text
+    style.font-size: 14
+  }
+  
+  Metric3: {
+    label: "✓ F1-Score (Attack): 0.942"
+    shape: text
+    style.font-size: 14
+  }
+  
+  Metric4: {
+    label: "✓ Inference Latency: 0.28ms"
+    shape: text
+    style.font-size: 14
+  }
+  
+  Metric5: {
+    label: "✓ Model Size: 54KB (14,099 params)"
+    shape: text
+    style.font-size: 14
+  }
+}
+
+// Innovation Highlights
+InnovationBox: {
+  label: "Novel Contributions"
+  shape: rectangle
+  style.bold: true
+  style.font-size: 16
+  style.fill: "#e1f5fe"
+  style.stroke: "#0277bd"
+  style.stroke-width: 3
+  
+  Innovation1: {
+    label: "★ Protocol-Aware Group Gating"
+    shape: text
+    style.font-size: 14
+  }
+  
+  Innovation2: {
+    label: "★ Structured Sparsity (Group Lasso)"
+    shape: text
+    style.font-size: 14
+  }
+  
+  Innovation3: {
+    label: "★ Interpretable Feature Selection"
+    shape: text
+    style.font-size: 14
+  }
+  
+  Innovation4: {
+    label: "★ Multi-Objective Optimization"
+    shape: text
+    style.font-size: 14
+  }
+}

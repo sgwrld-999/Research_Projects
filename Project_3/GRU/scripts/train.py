@@ -14,19 +14,16 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import psutil
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import label_binarize
 from sklearn.metrics import (
     classification_report, confusion_matrix, precision_score, 
     recall_score, f1_score, roc_auc_score, roc_curve
 )
-
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppress TensorFlow logging
-os.environ['TF_CPP_MIN_VLOG_LEVEL'] = '3'  # Suppress TensorFlow verbose logging
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'  # Force CPU-only mode
-os.environ['TF_ENABLE_ONEDNN_OPTS'] = '1'  # Enable CPU optimizations
-
-import tensorflow as tf
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import label_binarize
 
 # ignoring warning
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -539,14 +536,14 @@ class GRUTrainer:
         # Define class names for better visualization
         self.class_names = ['Recon', 'Exploitation', 'C&C', 'Attack', 'Benign']
         
-        # Configure TensorFlow and store GPU availability
-        self.using_gpu = self._configure_tensorflow()
+        # Configure PyTorch and store GPU availability
+        self.using_gpu = self._configure_pytorch()
         
         # Set random seeds for reproducibility
         self._set_random_seeds()
         
-        # Configure TensorFlow for optimal performance
-        self._configure_tensorflow()
+        # Set device for training
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
     def _set_random_seeds(self, seed: int = 42) -> None:
         """
@@ -561,128 +558,54 @@ class GRUTrainer:
         - Debugging capability with deterministic behavior
         """
         np.random.seed(seed)
-        tf.random.set_seed(seed)
+        torch.manual_seed(seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed(seed)
+            torch.cuda.manual_seed_all(seed)
         logger.info(f"Random seeds set to {seed} for reproducibility")
     
-    def _configure_tensorflow(self) -> bool:
+    def _configure_pytorch(self) -> bool:
         """
-        Configure TensorFlow for CPU-only operation with maximum performance.
+        Configure PyTorch for GPU operation with maximum performance.
         
-        THEORY - CPU-Only Configuration:
-        ===============================
-        - Force CPU mode: Disable GPU to avoid memory conflicts
-        - Parallel Processing: Use all CPU cores for optimal performance
-        - Fast Setup: Skip GPU detection entirely for immediate startup
+        THEORY - GPU Configuration:
+        ===========================
+        - Enable GPU mode: Use CUDA-compatible GPU for training
+        - GPU Verification: Ensure GPU is available and properly configured
         """
-        import os
-        import psutil
         
-        # Force CPU-only mode
-        os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
-        os.environ['TF_ENABLE_ONEDNN_OPTS'] = '1'
-        
-        # Get system information
-        cpu_count = psutil.cpu_count(logical=True)
-        available_memory = psutil.virtual_memory().available / (1024**3)  # GB
-        
-        logger.info(f"=== CPU-ONLY MODE ENABLED ===")
-        logger.info(f"System Info: {cpu_count} CPU cores, {available_memory:.1f}GB available RAM")
-        
-        # Configure TensorFlow for optimal CPU performance
-        tf.config.threading.set_inter_op_parallelism_threads(cpu_count)
-        tf.config.threading.set_intra_op_parallelism_threads(cpu_count)
-        
-        # Essential performance optimizations
-        tf.config.optimizer.set_experimental_options({
-            'layout_optimizer': True,
-            'constant_folding': True,
-            'arithmetic_optimization': True,
-        })
-        
-        logger.info(f"TensorFlow configured for CPU with {cpu_count} cores - READY FOR TRAINING!")
-        
-        return False  # Not using GPU
-    
-    def create_callbacks(self) -> list:
-        """
-        Create training callbacks for monitoring and control.
-        
-        THEORY - Training Callbacks:
-        ============================
-        
-        1. EARLY STOPPING:
-           - Monitors validation loss
-           - Stops training when no improvement
-           - Prevents overfitting and saves time
-        
-        2. MODEL CHECKPOINTING:
-           - Saves best model during training
-           - Protects against training failures
-           - Enables model recovery
-        
-        3. LEARNING RATE SCHEDULING:
-           - Reduces LR when plateau detected
-           - Helps model converge to better minima
-           - Prevents oscillation around optima
-        
-        4. REDUCE LR ON PLATEAU:
-           - Adaptive learning rate adjustment
-           - Improves convergence in later stages
-        """
-        callbacks = []
-        
-        # Early stopping
-        early_stopping = tf.keras.callbacks.EarlyStopping(
-            monitor='val_loss',
-            patience=self.config.early_stopping_patience,
-            restore_best_weights=True,
-            verbose=1,
-            mode='min'
-        )
-        callbacks.append(early_stopping)
-        
-        # Model checkpointing
-        checkpoint_path = Path(self.config.export_path)
-        checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        model_checkpoint = tf.keras.callbacks.ModelCheckpoint(
-            filepath=str(checkpoint_path),
-            monitor='val_loss',
-            save_best_only=True,
-            save_weights_only=False,
-            verbose=1,
-            mode='min'
-        )
-        callbacks.append(model_checkpoint)
-        
-        # Learning rate reduction
-        lr_scheduler = tf.keras.callbacks.ReduceLROnPlateau(
-            monitor='val_loss',
-            factor=0.5,
-            patience=5,
-            min_lr=1e-7,
-            verbose=1,
-            mode='min'
-        )
-        callbacks.append(lr_scheduler)
-        
-        # CSV logging with timestamp
-        csv_filename = f"training_metrics_{self.current_time}.csv"
-        csv_logger = tf.keras.callbacks.CSVLogger(
-            filename=str(PROJECT_ROOT / 'logs' / csv_filename),
-            append=True
-        )
-        callbacks.append(csv_logger)
-        
-        return callbacks
+        # Check GPU availability
+        if torch.cuda.is_available():
+            device = torch.device('cuda')
+            gpu_name = torch.cuda.get_device_name(0)
+            gpu_count = torch.cuda.device_count()
+            
+            logger.info(f"=== GPU MODE ENABLED ===")
+            logger.info(f"GPU Device: {gpu_name}")
+            logger.info(f"Number of GPUs available: {gpu_count}")
+            logger.info(f"PyTorch version: {torch.__version__}")
+            logger.info(f"CUDA version: {torch.version.cuda}")
+            logger.info(f"GPU is ready for training!")
+            
+            return True  # Using GPU
+        else:
+            logger.warning("=== NO GPU DETECTED ===")
+            logger.warning("Training will run on CPU (slower performance)")
+            
+            # Configure for CPU as fallback
+            cpu_count = psutil.cpu_count(logical=True)
+            available_memory = psutil.virtual_memory().available / (1024**3)
+            logger.info(f"System Info: {cpu_count} CPU cores, {available_memory:.1f}GB available RAM")
+            
+            return False  # Not using GPU
     
     def train(
         self, 
         X: np.ndarray, 
         y: np.ndarray
-    ) -> Tuple[tf.keras.Model, Dict[str, Any]]:
+    ) -> Tuple[nn.Module, Dict[str, Any]]:
         """
-        Execute the complete training pipeline.
+        Execute the complete training pipeline with PyTorch.
         
         THEORY - Training Process:
         =========================
@@ -692,7 +615,7 @@ class GRUTrainer:
            - Validation set: monitors generalization during training
            - Test set: final evaluation (not used during training)
         
-        2. MODEL COMPILATION:
+        2. MODEL TRAINING:
            - Optimizer: how model updates weights
            - Loss function: what model optimizes
            - Metrics: what we monitor (not optimized directly)
@@ -716,7 +639,7 @@ class GRUTrainer:
         # Optimize data types for speed
         logger.info("Optimizing data types for performance...")
         X = X.astype(np.float32) if X.dtype != np.float32 else X
-        y = y.astype(np.int32) if y.dtype != np.int32 else y
+        y = y.astype(np.int64) if y.dtype != np.int64 else y
         
         # Split data with progress indicator
         logger.info("Splitting data into training and validation sets...")
@@ -730,65 +653,183 @@ class GRUTrainer:
         logger.info(f"Training samples: {len(X_train):,}")
         logger.info(f"Validation samples: {len(X_val):,}")
         
+        # Convert to PyTorch tensors
+        X_train_tensor = torch.FloatTensor(X_train).to(self.device)
+        y_train_tensor = torch.LongTensor(y_train).to(self.device)
+        X_val_tensor = torch.FloatTensor(X_val).to(self.device)
+        y_val_tensor = torch.LongTensor(y_val).to(self.device)
+        
+        # Create data loaders
+        train_dataset = TensorDataset(X_train_tensor, y_train_tensor)
+        val_dataset = TensorDataset(X_val_tensor, y_val_tensor)
+        
+        train_loader = DataLoader(train_dataset, batch_size=self.config.batch_size, shuffle=True)
+        val_loader = DataLoader(val_dataset, batch_size=self.config.batch_size, shuffle=False)
+        
         # Build model with progress tracking
         logger.info("Building model architecture...")
         model_start = time.time()
         self.model = build_gru_model(self.config)
+        self.model = self.model.to(self.device)
         model_time = time.time() - model_start
         logger.info(f"Model built successfully in {model_time:.2f} seconds")
 
         # Display model architecture
-        self.model.summary(print_fn=logger.info)
+        logger.info(f"Model architecture:\n{self.model}")
+        
+        # Count parameters
+        total_params = sum(p.numel() for p in self.model.parameters())
+        trainable_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
+        logger.info(f"Total parameters: {total_params:,}")
+        logger.info(f"Trainable parameters: {trainable_params:,}")
 
-        # Create callbacks
-        logger.info("Setting up training callbacks...")
-        callbacks = self.create_callbacks()
+        # Setup optimizer and loss function
+        optimizer = optim.Adam(
+            self.model.parameters(),
+            lr=self.config.learning_rate,
+            betas=(0.9, 0.999),
+            eps=1e-7
+        )
+        
+        criterion = nn.CrossEntropyLoss()
+        
+        # Learning rate scheduler
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer,
+            mode='min',
+            factor=0.5,
+            patience=5,
+            min_lr=1e-7,
+            verbose=True
+        )
+
+        # Training history
+        history = {
+            'loss': [],
+            'accuracy': [],
+            'val_loss': [],
+            'val_accuracy': []
+        }
 
         # Train model with timing
         logger.info("=== STARTING TRAINING PROCESS ===")
-        logger.info(f"Device: {'GPU' if self.using_gpu else 'CPU'}")
+        logger.info(f"Device: {self.device}")
         logger.info(f"Batch size: {self.config.batch_size}")
-        logger.info(f"Total batches per epoch: {len(X_train) // self.config.batch_size}")
+        logger.info(f"Total batches per epoch: {len(train_loader)}")
+        
+        best_val_loss = float('inf')
+        patience_counter = 0
+        
+        # Create model save directory
+        checkpoint_path = Path(self.config.export_path)
+        checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # CSV logging setup
+        csv_filename = f"training_metrics_{self.current_time}.csv"
+        csv_path = PROJECT_ROOT / 'logs' / csv_filename
+        with open(csv_path, 'w') as f:
+            f.write("epoch,loss,accuracy,val_loss,val_accuracy,lr\n")
         
         training_start = time.time()
-        self.history = self.model.fit(
-            X_train, y_train,
-            validation_data=(X_val, y_val),
-            epochs=self.config.epochs,
-            batch_size=self.config.batch_size,
-            callbacks=callbacks,
-            verbose=1,
-            shuffle=True
-        )
+        
+        for epoch in range(self.config.epochs):
+            # Training phase
+            self.model.train()
+            train_loss = 0.0
+            train_correct = 0
+            train_total = 0
+            
+            for batch_idx, (data, target) in enumerate(train_loader):
+                optimizer.zero_grad()
+                output = self.model(data)
+                loss = criterion(output, target)
+                loss.backward()
+                optimizer.step()
+                
+                train_loss += loss.item()
+                _, predicted = torch.max(output.data, 1)
+                train_total += target.size(0)
+                train_correct += (predicted == target).sum().item()
+            
+            train_loss /= len(train_loader)
+            train_accuracy = train_correct / train_total
+            
+            # Validation phase
+            self.model.eval()
+            val_loss = 0.0
+            val_correct = 0
+            val_total = 0
+            
+            with torch.no_grad():
+                for data, target in val_loader:
+                    output = self.model(data)
+                    loss = criterion(output, target)
+                    
+                    val_loss += loss.item()
+                    _, predicted = torch.max(output.data, 1)
+                    val_total += target.size(0)
+                    val_correct += (predicted == target).sum().item()
+            
+            val_loss /= len(val_loader)
+            val_accuracy = val_correct / val_total
+            
+            # Update learning rate
+            scheduler.step(val_loss)
+            current_lr = optimizer.param_groups[0]['lr']
+            
+            # Store history
+            history['loss'].append(train_loss)
+            history['accuracy'].append(train_accuracy)
+            history['val_loss'].append(val_loss)
+            history['val_accuracy'].append(val_accuracy)
+            
+            # Log to CSV
+            with open(csv_path, 'a') as f:
+                f.write(f"{epoch+1},{train_loss:.6f},{train_accuracy:.6f},{val_loss:.6f},{val_accuracy:.6f},{current_lr:.8f}\n")
+            
+            # Print progress
+            logger.info(
+                f"Epoch [{epoch+1}/{self.config.epochs}] "
+                f"Train Loss: {train_loss:.4f}, Train Acc: {train_accuracy:.4f} | "
+                f"Val Loss: {val_loss:.4f}, Val Acc: {val_accuracy:.4f} | "
+                f"LR: {current_lr:.2e}"
+            )
+            
+            # Save best model
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                torch.save({
+                    'epoch': epoch,
+                    'model_state_dict': self.model.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict(),
+                    'val_loss': val_loss,
+                    'val_accuracy': val_accuracy,
+                }, str(checkpoint_path).replace('.keras', '.pth'))
+                logger.info(f"Model saved with validation loss: {val_loss:.4f}")
+                patience_counter = 0
+            else:
+                patience_counter += 1
+            
+            # Early stopping
+            if patience_counter >= self.config.early_stopping_patience:
+                logger.info(f"Early stopping triggered after {epoch+1} epochs")
+                break
 
         logger.info("Training completed successfully")
+        
+        training_time = time.time() - training_start
+        logger.info(f"Total training time: {training_time/60:.2f} minutes")
 
-        # Log final metrics for all configured metrics
+        # Log final metrics
         final_metrics = {
-            'final_train_loss': self.history.history['loss'][-1],
-            'final_val_loss': self.history.history['val_loss'][-1],
-            'best_val_loss': min(self.history.history['val_loss']),
-            'total_epochs': len(self.history.history['loss'])
+            'final_train_loss': history['loss'][-1],
+            'final_val_loss': history['val_loss'][-1],
+            'best_val_loss': min(history['val_loss']),
+            'final_train_accuracy': history['accuracy'][-1],
+            'final_val_accuracy': history['val_accuracy'][-1],
+            'best_val_accuracy': max(history['val_accuracy']),
+            'total_epochs': len(history['loss'])
         }
-
-        # Add metrics that were tracked during training
-        for metric in self.config.metrics:
-            if metric == 'accuracy' and 'accuracy' in self.history.history:
-                final_metrics['final_train_accuracy'] = self.history.history['accuracy'][-1]
-                final_metrics['final_val_accuracy'] = self.history.history['val_accuracy'][-1]
-                final_metrics['best_val_accuracy'] = max(self.history.history['val_accuracy'])
-            elif metric == 'precision' and 'precision' in self.history.history:
-                final_metrics['final_train_precision'] = self.history.history['precision'][-1]
-                final_metrics['final_val_precision'] = self.history.history['val_precision'][-1]
-                final_metrics['best_val_precision'] = max(self.history.history['val_precision'])
-            elif metric == 'recall' and 'recall' in self.history.history:
-                final_metrics['final_train_recall'] = self.history.history['recall'][-1]
-                final_metrics['final_val_recall'] = self.history.history['val_recall'][-1]
-                final_metrics['best_val_recall'] = max(self.history.history['val_recall'])
-            elif metric == 'f1_score' and 'f1_score' in self.history.history:
-                final_metrics['final_train_f1_score'] = self.history.history['f1_score'][-1]
-                final_metrics['final_val_f1_score'] = self.history.history['val_f1_score'][-1]
-                final_metrics['best_val_f1_score'] = max(self.history.history['val_f1_score'])
 
         for metric, value in final_metrics.items():
             logger.info(f"{metric}: {value:.4f}")
@@ -800,13 +841,14 @@ class GRUTrainer:
 
         # Generate training plots
         logger.info("Generating training visualization plots...")
-        self.plotter.plot_training_history(self.history.history)
+        self.plotter.plot_training_history(history)
         
         # Evaluate model on validation set and create plots
         logger.info("Evaluating model and generating evaluation plots...")
         self._evaluate_and_plot(X_val, y_val)
 
-        return self.model, self.history.history
+        self.history = history
+        return self.model, history
     
     def _evaluate_and_plot(self, X_val: np.ndarray, y_val: np.ndarray) -> None:
         """
@@ -818,8 +860,14 @@ class GRUTrainer:
         """
         logger.info("Starting comprehensive model evaluation...")
         
+        # Convert to tensors
+        X_val_tensor = torch.FloatTensor(X_val).to(self.device)
+        
         # Get predictions
-        y_pred_proba = self.model.predict(X_val, verbose=0)
+        self.model.eval()
+        with torch.no_grad():
+            y_pred_proba = self.model(X_val_tensor).cpu().numpy()
+        
         y_pred = np.argmax(y_pred_proba, axis=1)
         
         # Plot confusion matrix and get per-class metrics
@@ -892,7 +940,7 @@ def main():
         processor = DataProcessor(config)
         
         # Load and prepare data (assumes data is already preprocessed)
-        data_path = Path("/fab3/btech/2022/siddhant.gond22b@iiitg.ac.in/Research_Internship_Under_Dr_Rakesh_Matam/Project_3/dataset/combined_dataset_short_balanced_encoded_normalised.csv")
+        data_path = Path(r"C:\Users\abhay\OneDrive\Desktop\SID\Research_Internship_Under_Dr_Rakesh_Matam\Project_3\dataset\combined_dataset_short_balanced_encoded_normalised.csv")
         
         if not data_path.exists():
             logger.error(f"Data file not found: {data_path}")
@@ -908,8 +956,12 @@ def main():
         model, history = trainer.train(X, y)
         
         # Save final model
-        final_model_path = config.export_path.replace('.keras', '_final.keras')
-        model.save(final_model_path)
+        final_model_path = config.export_path.replace('.keras', '_final.pth')
+        torch.save({
+            'model_state_dict': model.state_dict(),
+            'config': config,
+            'history': history
+        }, final_model_path)
         logger.info(f"Final model saved to: {final_model_path}")
         
         logger.info("Training pipeline completed successfully!")
