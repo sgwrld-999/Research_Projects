@@ -1,48 +1,126 @@
-# Ignore only model files over GitHub's size limits
-*.joblib
-*/*/models/saved_Models/*.joblib
-*/data/raw/90%_Complete_dataset.csv
-*/data/raw/combined_dataset_short_balanced_encoded_normalised_shuffled.csv
-*/*/models/saved_Models/*.h5
-*/*/models/saved_Models/*.pb
-*/*/models/saved_Models/*.tflite
-*/*/models/saved_Models/*.ckpt
-*/*/models/saved_Models/*.index
-*/*/models/saved_Models/*.data-00000-of-00001
+# === Standard ignores for this multi-project repository ===
 
-# Ignore Project_2 large data directories and files
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files
+~$*
+*.tmp
+*.temp
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+/.venv/
+
+# Byte-compiled / optimized / DLL files
+*.pyc
+*.pyo
+*.pyd
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+pip-wheel-metadata/
+wheels/
+
+# Virtualenv
+.venv/
+venv/
+env/
+
+# IDEs and editors
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+*.swp
+*.swo
+*~
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+
+# Caches
+.mypy_cache/
+.ropeproject/
+.cache/
+
+# Logs
+logs/
+*.log
+
+# Models, large binaries and checkpoints
+*.h5
+*.hdf5
+*.pb
+*.tflite
+*.ckpt
+*.index
+*.data-00000-of-00001
+*.joblib
+*.pth
+*.pt
+models/
+checkpoints/
+saved_models/
+
+# Data (ignore raw / large data files by default)
+data/
+dataset/
+datasets/
+raw_data/
+*.csv
+*.npy
+*.npz
+*.parquet
+
+# Results and outputs
+results/
+outputs/
+runs/
+plots/
+
+# Project-specific safe exceptions
+!requirements.txt
+!config.yaml
+!.gitignore
+!.gitattributes
+
+# Keep some project directories ignored as before
+Project_5/
 Project_2/data/raw/
 Project_2/data/processes_2/
 Project_2/data/processed_data/
-Project_2/processed_data/
 
-# Include specific Project_2 directories
+# Allow retaining tracked training results/logs directories
 !Project_2/logs/
 !Project_2/training_results_1/
 !Project_2/training_results_processes_2_full/
 
-# Ignore Project_5 entirely
-Project_5/
+# OneDrive / Windows-specific
+~$*.*
+OneDriveTemp/
 
-# Ignore large data files (CSV, NPY, etc.)
-*.npy
-*.csv
-!requirements.txt
-!config.yaml
-
-# Ignore Python cache
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-*.so
-
-
-
-# Keep other files including outputs, logs, and plots
-!*/*/outputs/
-!*/*/logs/
-!*/*/plots/
-!.gitignore
-!.gitattributes
+# End of consolidated .gitignore
