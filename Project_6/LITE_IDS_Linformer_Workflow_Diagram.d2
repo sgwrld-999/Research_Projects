@@ -1,0 +1,722 @@
+title: "LITE-IDS: Linformer-Based Intrusion Detection System - End-to-End Workflow"
+direction: right
+
+// ===== RAW DATA INPUT =====
+RawDatasets: {
+  label: "Raw IoT Network Datasets"
+  shape: cylinder
+  style.bold: true
+  style.font-size: 18
+  style.fill: "#e3f2fd"
+
+  CICIoT: {
+    label: "CIC-IoT-2023\n(33 attack types)"
+    shape: rectangle
+    style.font-size: 14
+  }
+
+  EdgeIIoT: {
+    label: "Edge-IIoTset\n(14 attack types)"
+    shape: rectangle
+    style.font-size: 14
+  }
+}
+
+// ===== PREPROCESSING PIPELINE =====
+Preprocessing: {
+  label: "Preprocessing Pipeline"
+  shape: rectangle
+  style.bold: true
+  style.font-size: 18
+  style.fill: "#fff3e0"
+
+  DataCleaning: {
+    label: "Data Cleaning\nRemove duplicates, handle NaN/Inf\nDrop irrelevant columns"
+    shape: rectangle
+    style.font-size: 14
+    style.fill: "#ffe0b2"
+  }
+
+  LabelEncoding: {
+    label: "Label Encoding\nBinary: Normal=0, Attack=1\nMulti-class: Attack type → int"
+    shape: rectangle
+    style.font-size: 14
+    style.fill: "#ffe0b2"
+  }
+
+  FeatureSelection: {
+    label: "Feature Selection\nCorrelation-based (CFS)\nRemove low-variance & redundant"
+    shape: rectangle
+    style.font-size: 14
+    style.fill: "#ffe0b2"
+  }
+
+  Normalization: {
+    label: "Normalization\nMin-Max Scaling → [0, 1]\nStable training for deep learning"
+    shape: rectangle
+    style.font-size: 14
+    style.fill: "#ffe0b2"
+  }
+}
+
+// ===== DATA SPLITTING =====
+DataSplit: {
+  label: "Stratified Data Split"
+  shape: rectangle
+  style.bold: true
+  style.font-size: 18
+  style.fill: "#fce4ec"
+
+  TrainSet: {
+    label: "Train Set\n(~70%)\nD_train"
+    shape: rectangle
+    style.font-size: 14
+    style.fill: "#f8bbd0"
+  }
+
+  ValSet: {
+    label: "Validation Set\n(~15%)\nD_val"
+    shape: rectangle
+    style.font-size: 14
+    style.fill: "#f8bbd0"
+  }
+
+  TestSet: {
+    label: "Test Set\n(~15%)\nD_test"
+    shape: rectangle
+    style.font-size: 14
+    style.fill: "#f8bbd0"
+  }
+}
+
+// ===== MODEL INITIALIZATION =====
+ModelInit: {
+  label: "Model Initialization\n(Algorithm 1, Steps 1-3)"
+  shape: rectangle
+  style.bold: true
+  style.font-size: 18
+  style.fill: "#e8eaf6"
+
+  LinformerModel: {
+    label: "Initialize LinformerIDS\nω (model weights)\nXavier initialization"
+    shape: rectangle
+    style.font-size: 14
+    style.fill: "#c5cae9"
+  }
+
+  Optimizer: {
+    label: "Adam Optimizer\nLR: 1e-4\nWeight Decay: 1e-5"
+    shape: rectangle
+    style.font-size: 14
+    style.fill: "#c5cae9"
+  }
+
+  LossInit: {
+    label: "Loss Function\nFocal Loss (γ=2, α=0.25)\nor Cross-Entropy"
+    shape: rectangle
+    style.font-size: 14
+    style.fill: "#c5cae9"
+  }
+}
+
+// ===== LINFORMER-IDS MODEL ARCHITECTURE =====
+LinformerIDS: {
+  label: "LinformerIDS Model Architecture\n(batch, seq_len) → (batch, num_classes)"
+  shape: rectangle
+  style.bold: true
+  style.font-size: 18
+  style.fill: "#e0f2f1"
+
+  // Step 1: Embedding
+  EmbeddingLayer: {
+    label: "Feature Embedding Layer\nLinear(1 → d_model)\n(batch, seq_len) → (batch, seq_len, d_model)\nProjects each scalar feature to d-dim vector"
+    shape: rectangle
+    style.font-size: 14
+    style.fill: "#b2dfdb"
+  }
+
+  // Step 2: Stacked Encoder
+  LinformerEncoder: {
+    label: "Stacked Linformer Encoder\n(L = 4 layers)"
+    shape: rectangle
+    style.bold: true
+    style.font-size: 16
+    style.fill: "#80cbc4"
+
+    // Encoder Layer
+    EncoderLayer: {
+      label: "Linformer Encoder Layer × L\n(batch, seq_len, d_model) → (batch, seq_len, d_model)"
+      shape: rectangle
+      style.font-size: 15
+      style.fill: "#4db6ac"
+
+      // Pre-norm → Attention → Residual
+      Norm1: {
+        label: "Layer Norm 1\nNorm(x)\nStabilizes attention input"
+        shape: rectangle
+        style.font-size: 13
+        style.fill: "#e0f7fa"
+      }
+
+      LinformerAttn: {
+        label: "Linformer Self-Attention\n(Linear Complexity O(n))"
+        shape: rectangle
+        style.bold: true
+        style.font-size: 14
+        style.fill: "#b2ebf2"
+
+        QKVProjection: {
+          label: "QKV Projection\nto_qkv: Linear(d → 3d)\nSplit → Q, K, V ∈ ℝ^(n × d_k)\n(per head)"
+          shape: rectangle
+          style.font-size: 12
+          style.fill: "#e0f7fa"
+        }
+
+        KeyCompression: {
+          label: "Key Compression\nK̄ = E · K\nE ∈ ℝ^(k × n)\nK̄ ∈ ℝ^(k × d_k)"
+          shape: rectangle
+          style.font-size: 12
+          style.fill: "#e0f7fa"
+        }
+
+        ValueCompression: {
+          label: "Value Compression\nV̄ = F · V\nF ∈ ℝ^(k × n)\nV̄ ∈ ℝ^(k × d_v)"
+          shape: rectangle
+          style.font-size: 12
+          style.fill: "#e0f7fa"
+        }
+
+        AttentionScores: {
+          label: "Scaled Dot-Product\nP = Softmax(Q·K̄ᵀ / √d_k)\nP ∈ ℝ^(n × k)\nComplexity: O(n·k) = O(n)"
+          shape: hexagon
+          style.font-size: 12
+          style.fill: "#80deea"
+        }
+
+        AttentionOutput: {
+          label: "Weighted Sum\nOut = P · V̄\nOut ∈ ℝ^(n × d_v)\nMulti-head concat → Linear"
+          shape: rectangle
+          style.font-size: 12
+          style.fill: "#e0f7fa"
+        }
+      }
+
+      Residual1: {
+        label: "Residual Connection\nx = x + Dropout(attn_out)"
+        shape: rectangle
+        style.font-size: 13
+        style.fill: "#e0f7fa"
+      }
+
+      Norm2: {
+        label: "Layer Norm 2\nNorm(x)\nStabilizes FFN input"
+        shape: rectangle
+        style.font-size: 13
+        style.fill: "#e0f7fa"
+      }
+
+      FFN: {
+        label: "Feed-Forward Network\nLinear(d → 4d) → ReLU → Dropout\n→ Linear(4d → d)\nPosition-wise transformation"
+        shape: rectangle
+        style.font-size: 13
+        style.fill: "#b2ebf2"
+      }
+
+      Residual2: {
+        label: "Residual Connection\nx = x + Dropout(ff_out)"
+        shape: rectangle
+        style.font-size: 13
+        style.fill: "#e0f7fa"
+      }
+    }
+  }
+
+  // Step 3: Pooling
+  GlobalAvgPool: {
+    label: "Global Average Pooling\nAdaptiveAvgPool1d(1)\n(batch, d_model, seq_len) → (batch, d_model)\nAggregates sequence into single vector"
+    shape: rectangle
+    style.font-size: 14
+    style.fill: "#b2dfdb"
+  }
+
+  // Step 4: Classifier
+  ClassifierMLP: {
+    label: "Classification Head (MLP)\nLinear(d → d) → ReLU → Dropout\n→ Linear(d → num_classes)\n(batch, d_model) → (batch, num_classes)"
+    shape: rectangle
+    style.font-size: 14
+    style.fill: "#80cbc4"
+  }
+}
+
+// ===== LOSS COMPUTATION =====
+LossComputation: {
+  label: "Loss Computation\n(Algorithm 1, Step 8)"
+  shape: rectangle
+  style.bold: true
+  style.font-size: 18
+  style.fill: "#ffebee"
+
+  FocalLoss: {
+    label: "Focal Loss\nℒ_focal = α(1-pₜ)^γ · CE(ŷ, y)\nHandles class imbalance"
+    shape: rectangle
+    style.font-size: 14
+    style.fill: "#ffcdd2"
+  }
+
+  CrossEntropy: {
+    label: "Cross-Entropy Loss\nℒ_CE = -Σ y·log(ŷ)\nStandard classification"
+    shape: rectangle
+    style.font-size: 14
+    style.fill: "#ffcdd2"
+  }
+
+  TotalLoss: {
+    label: "Total Loss ℒ\nBackward pass\ngradient computation"
+    shape: hexagon
+    style.font-size: 14
+    style.fill: "#ef9a9a"
+  }
+}
+
+// ===== BACKWARD PASS / OPTIMIZATION =====
+BackwardPass: {
+  label: "Backpropagation & Optimization\n(Algorithm 1, Steps 8-9)"
+  shape: rectangle
+  style.bold: true
+  style.font-size: 18
+  style.fill: "#fff9c4"
+
+  GradientClipping: {
+    label: "Gradient Clipping\nclip_grad_norm_\nPrevents exploding gradients"
+    shape: rectangle
+    style.font-size: 14
+    style.fill: "#fff59d"
+  }
+
+  WeightUpdate: {
+    label: "Weight Update\noptimizer.step()\nω ← ω - η·∇ℒ"
+    shape: rectangle
+    style.font-size: 14
+    style.fill: "#fff59d"
+  }
+}
+
+// ===== VALIDATION AND CHECKPOINTING =====
+ValidationPhase: {
+  label: "Validation Phase\n(Algorithm 1, Step 10)"
+  shape: rectangle
+  style.bold: true
+  style.font-size: 18
+  style.fill: "#f3e5f5"
+
+  ModelEval: {
+    label: "Model.eval() mode\nNo gradient tracking\nForward pass on D_val"
+    shape: rectangle
+    style.font-size: 14
+    style.fill: "#e1bee7"
+  }
+
+  MetricsCompute: {
+    label: "Compute Metrics\nValidation Loss\nValidation Accuracy"
+    shape: rectangle
+    style.font-size: 14
+    style.fill: "#e1bee7"
+  }
+
+  Checkpointing: {
+    label: "Save Best Checkpoint\nω_best ← ω if acc improves\nbest_model.pth"
+    shape: rectangle
+    style.font-size: 14
+    style.fill: "#ce93d8"
+  }
+
+  EarlyStopping: {
+    label: "Early Stopping\npatience=10 epochs\nStop if no improvement"
+    shape: diamond
+    style.font-size: 14
+    style.fill: "#ba68c8"
+  }
+}
+
+// ===== FINAL PREDICTION =====
+FinalPrediction: {
+  label: "Final Prediction\n(Algorithm 1, Steps 12-14)"
+  shape: rectangle
+  style.bold: true
+  style.font-size: 18
+  style.fill: "#e8f5e9"
+
+  LoadBestModel: {
+    label: "Load ω_best\nBest checkpoint from training\nRestore model weights"
+    shape: rectangle
+    style.font-size: 14
+    style.fill: "#c8e6c9"
+  }
+
+  TestInference: {
+    label: "Test Set Inference\nForward pass on D_test\nLogits → Softmax → Predictions"
+    shape: rectangle
+    style.font-size: 14
+    style.fill: "#c8e6c9"
+  }
+
+  PredictionOutput: {
+    label: "Class Prediction\nargmax(logits)\nFinal class label"
+    shape: hexagon
+    style.font-size: 14
+    style.fill: "#66bb6a"
+  }
+}
+
+// ===== EVALUATION =====
+Evaluation: {
+  label: "Comprehensive Evaluation\n(Algorithm 1, Steps 13-14)"
+  shape: rectangle
+  style.bold: true
+  style.font-size: 18
+  style.fill: "#e3f2fd"
+
+  ClassificationMetrics: {
+    label: "Classification Metrics\nAccuracy, Precision\nRecall, F1-Score"
+    shape: rectangle
+    style.font-size: 14
+    style.fill: "#bbdefb"
+  }
+
+  IDSMetrics: {
+    label: "IDS-Specific Metrics\nFalse Positive Rate (FPR)\nFalse Negative Rate (FNR)"
+    shape: rectangle
+    style.font-size: 14
+    style.fill: "#bbdefb"
+  }
+
+  Visualizations: {
+    label: "Visualizations\nConfusion Matrix\nROC Curve"
+    shape: rectangle
+    style.font-size: 14
+    style.fill: "#90caf9"
+  }
+}
+
+// ===== FINAL OUTPUT =====
+FinalOutput: {
+  label: "Final Output"
+  shape: rectangle
+  style.bold: true
+  style.font-size: 18
+  style.fill: "#c8e6c9"
+
+  BenignTraffic: {
+    label: "Benign Traffic\nClass 0 – Normal\n(No attack detected)"
+    shape: rectangle
+    style.font-size: 15
+    style.fill: "#a5d6a7"
+  }
+
+  AttackDetected: {
+    label: "Attack Detected\nClass 1+ – Intrusion\n(Attack type identified)"
+    shape: rectangle
+    style.font-size: 15
+    style.fill: "#ef5350"
+  }
+
+  ModelArtifacts: {
+    label: "Model Artifacts\nBest Checkpoint (ω_best)\nTraining Logs, Metrics"
+    shape: rectangle
+    style.font-size: 15
+    style.fill: "#90caf9"
+  }
+}
+
+// ===================================
+// ===== WORKFLOW CONNECTIONS =========
+// ===================================
+
+// Data Input → Preprocessing
+RawDatasets -> Preprocessing: {
+  label: "Load CSV files\nraw network traffic"
+  style.bold: true
+  style.font-size: 13
+}
+
+// Preprocessing internal flow
+Preprocessing.DataCleaning -> Preprocessing.LabelEncoding
+Preprocessing.LabelEncoding -> Preprocessing.FeatureSelection
+Preprocessing.FeatureSelection -> Preprocessing.Normalization
+
+// Preprocessing → Data Split
+Preprocessing -> DataSplit: {
+  label: "Cleaned & normalized features\nx ∈ ℝ^(N × d_features)"
+  style.bold: true
+  style.font-size: 13
+}
+
+// Data Split internal flow
+DataSplit.TrainSet -> DataSplit.ValSet
+DataSplit.ValSet -> DataSplit.TestSet
+
+// Data Split → Model Init
+DataSplit -> ModelInit: {
+  label: "Dataset ready\nAlgorithm 1 begins"
+  style.bold: true
+  style.font-size: 13
+}
+
+// Model Init internal flow
+ModelInit.LinformerModel -> ModelInit.Optimizer
+ModelInit.Optimizer -> ModelInit.LossInit
+
+// Model Init → LinformerIDS Architecture
+ModelInit -> LinformerIDS: {
+  label: "Initialize model ω\nInput batch (batch, seq_len)"
+  style.bold: true
+  style.font-size: 13
+}
+
+// LinformerIDS internal flow: Embedding → Encoder → Pool → Classifier
+LinformerIDS.EmbeddingLayer -> LinformerIDS.LinformerEncoder: {
+  label: "(batch, seq_len, d_model)"
+  style.font-size: 12
+}
+
+// Encoder internal flow
+LinformerIDS.LinformerEncoder.EncoderLayer.Norm1 -> LinformerIDS.LinformerEncoder.EncoderLayer.LinformerAttn
+LinformerIDS.LinformerEncoder.EncoderLayer.LinformerAttn.QKVProjection -> LinformerIDS.LinformerEncoder.EncoderLayer.LinformerAttn.KeyCompression
+LinformerIDS.LinformerEncoder.EncoderLayer.LinformerAttn.QKVProjection -> LinformerIDS.LinformerEncoder.EncoderLayer.LinformerAttn.ValueCompression
+LinformerIDS.LinformerEncoder.EncoderLayer.LinformerAttn.KeyCompression -> LinformerIDS.LinformerEncoder.EncoderLayer.LinformerAttn.AttentionScores
+LinformerIDS.LinformerEncoder.EncoderLayer.LinformerAttn.ValueCompression -> LinformerIDS.LinformerEncoder.EncoderLayer.LinformerAttn.AttentionScores
+LinformerIDS.LinformerEncoder.EncoderLayer.LinformerAttn.AttentionScores -> LinformerIDS.LinformerEncoder.EncoderLayer.LinformerAttn.AttentionOutput
+LinformerIDS.LinformerEncoder.EncoderLayer.LinformerAttn -> LinformerIDS.LinformerEncoder.EncoderLayer.Residual1
+LinformerIDS.LinformerEncoder.EncoderLayer.Residual1 -> LinformerIDS.LinformerEncoder.EncoderLayer.Norm2
+LinformerIDS.LinformerEncoder.EncoderLayer.Norm2 -> LinformerIDS.LinformerEncoder.EncoderLayer.FFN
+LinformerIDS.LinformerEncoder.EncoderLayer.FFN -> LinformerIDS.LinformerEncoder.EncoderLayer.Residual2
+
+LinformerIDS.LinformerEncoder -> LinformerIDS.GlobalAvgPool: {
+  label: "(batch, seq_len, d_model)"
+  style.font-size: 12
+}
+
+LinformerIDS.GlobalAvgPool -> LinformerIDS.ClassifierMLP: {
+  label: "(batch, d_model)"
+  style.font-size: 12
+}
+
+// LinformerIDS → Loss Computation
+LinformerIDS -> LossComputation: {
+  label: "Logits ŷ ∈ ℝ^(batch × num_classes)\n+ Ground truth labels y"
+  style.bold: true
+  style.font-size: 13
+}
+
+// Loss internal flow
+LossComputation.FocalLoss -> LossComputation.TotalLoss
+LossComputation.CrossEntropy -> LossComputation.TotalLoss
+
+// Loss → Backward Pass
+LossComputation -> BackwardPass: {
+  label: "loss.backward()\nCompute ∇ℒ w.r.t. ω"
+  style.stroke: "#e91e63"
+  style.bold: true
+  style.font-size: 13
+  style.animated: true
+}
+
+// Backward Pass internal flow
+BackwardPass.GradientClipping -> BackwardPass.WeightUpdate
+
+// Backward Pass loops back to training (training loop)
+BackwardPass -> LinformerIDS: {
+  label: "Next mini-batch\nω updated\n(Algorithm 1, Steps 8-9 loop)"
+  style.stroke: "#f44336"
+  style.bold: true
+  style.font-size: 12
+  style.animated: true
+}
+
+// Training set feeds the model
+DataSplit.TrainSet -> LinformerIDS: {
+  label: "Mini-batches {xᵢ, yᵢ}ᵢ₌₁ᴮ"
+  style.stroke: "#4caf50"
+  style.bold: true
+  style.font-size: 13
+}
+
+// Validation set feeds validation phase
+DataSplit.ValSet -> ValidationPhase: {
+  label: "D_val batches"
+  style.stroke: "#ff9800"
+  style.bold: true
+  style.font-size: 13
+}
+
+// After each epoch: go to validation
+BackwardPass -> ValidationPhase: {
+  label: "End of epoch e\nEvaluate on D_val"
+  style.bold: true
+  style.font-size: 13
+}
+
+// Validation internal flow
+ValidationPhase.ModelEval -> ValidationPhase.MetricsCompute
+ValidationPhase.MetricsCompute -> ValidationPhase.Checkpointing
+ValidationPhase.Checkpointing -> ValidationPhase.EarlyStopping
+
+// Early stopping decision
+ValidationPhase.EarlyStopping -> LinformerIDS: {
+  label: "Continue training\n(no early stop)"
+  style.stroke: "#4caf50"
+  style.bold: true
+  style.font-size: 12
+}
+
+// Training complete → Final Prediction
+ValidationPhase -> FinalPrediction: {
+  label: "Training complete\nLoad ω_best\n(Algorithm 1, Step 12)"
+  style.bold: true
+  style.font-size: 13
+}
+
+// Test set feeds final prediction
+DataSplit.TestSet -> FinalPrediction: {
+  label: "D_test data"
+  style.stroke: "#2196f3"
+  style.bold: true
+  style.font-size: 13
+}
+
+// Final Prediction internal flow
+FinalPrediction.LoadBestModel -> FinalPrediction.TestInference
+FinalPrediction.TestInference -> FinalPrediction.PredictionOutput
+
+// Final Prediction → Evaluation
+FinalPrediction -> Evaluation: {
+  label: "Predictions + true labels\n(Algorithm 1, Steps 13-14)"
+  style.bold: true
+  style.font-size: 13
+}
+
+// Evaluation internal flow
+Evaluation.ClassificationMetrics -> Evaluation.IDSMetrics
+Evaluation.IDSMetrics -> Evaluation.Visualizations
+
+// Evaluation → Final Output
+Evaluation -> FinalOutput: {
+  label: "Evaluation complete"
+  style.bold: true
+  style.font-size: 13
+}
+
+// Prediction class outputs
+FinalPrediction.PredictionOutput -> FinalOutput.BenignTraffic: {
+  label: "Class 0\n(Normal traffic)"
+  style.stroke: "#4caf50"
+  style.bold: true
+  style.font-size: 13
+}
+
+FinalPrediction.PredictionOutput -> FinalOutput.AttackDetected: {
+  label: "Class 1+\n(Intrusion detected)"
+  style.stroke: "#f44336"
+  style.bold: true
+  style.font-size: 13
+}
+
+ValidationPhase.Checkpointing -> FinalOutput.ModelArtifacts: {
+  label: "Save ω_best\ncheckpoints"
+  style.bold: true
+  style.font-size: 13
+}
+
+// ===== KEY COMPLEXITY HIGHLIGHT =====
+ComplexityBox: {
+  label: "Linformer Key Innovation"
+  shape: rectangle
+  style.bold: true
+  style.font-size: 16
+  style.fill: "#fff9c4"
+  style.stroke: "#f57c00"
+  style.stroke-width: 3
+
+  Complexity1: {
+    label: "Standard Attention: O(n²) time & space"
+    shape: text
+    style.font-size: 14
+  }
+
+  Complexity2: {
+    label: "Linformer Attention: O(n) time & space"
+    shape: text
+    style.font-size: 14
+  }
+
+  Complexity3: {
+    label: "Key Projection E, F ∈ ℝ^(k × n), k << n"
+    shape: text
+    style.font-size: 14
+  }
+
+  Complexity4: {
+    label: "Attention map: n × k (not n × n)"
+    shape: text
+    style.font-size: 14
+  }
+}
+
+// ===== MODEL HYPERPARAMETERS =====
+HyperParamsBox: {
+  label: "Default Hyperparameters"
+  shape: rectangle
+  style.bold: true
+  style.font-size: 16
+  style.fill: "#e8f5e9"
+  style.stroke: "#388e3c"
+  style.stroke-width: 3
+
+  HP1: {
+    label: "d_model (dim): 64"
+    shape: text
+    style.font-size: 14
+  }
+
+  HP2: {
+    label: "Encoder Layers (depth): 4"
+    shape: text
+    style.font-size: 14
+  }
+
+  HP3: {
+    label: "Attention Heads (heads): 4"
+    shape: text
+    style.font-size: 14
+  }
+
+  HP4: {
+    label: "Projection Dim (k): 16"
+    shape: text
+    style.font-size: 14
+  }
+
+  HP5: {
+    label: "Dropout: 0.1"
+    shape: text
+    style.font-size: 14
+  }
+
+  HP6: {
+    label: "FF Hidden Mult: 4 (dim × 4)"
+    shape: text
+    style.font-size: 14
+  }
+
+  HP7: {
+    label: "Learning Rate: 1e-4 (Adam)"
+    shape: text
+    style.font-size: 14
+  }
+
+  HP8: {
+    label: "Batch Size: 256"
+    shape: text
+    style.font-size: 14
+  }
+}
