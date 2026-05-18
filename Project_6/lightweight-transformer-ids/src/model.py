@@ -435,10 +435,219 @@ class LinformerIDS(nn.Module):
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
 
 
-class ModelFactory:
-    """Factory class for creating Linformer-IDS models.
+class MLPIDS(nn.Module):
+    """MLP baseline for intrusion detection.
 
-    Follows the Factory Pattern to centralize model creation logic.
+    Treats each feature independently through stacked fully-connected layers
+    with BatchNorm and Dropout for regularisation.
+    """
+
+    def __init__(
+        self,
+        input_dim: int,
+        num_classes: int = 2,
+        hidden_dims: list = None,
+        dropout: float = 0.3,
+        use_batchnorm: bool = True,
+    ) -> None:
+        super().__init__()
+        hidden_dims = hidden_dims or [256, 128, 64]
+        layers: list = []
+        in_dim = input_dim
+        for h in hidden_dims:
+            layers.append(nn.Linear(in_dim, h))
+            if use_batchnorm:
+                layers.append(nn.BatchNorm1d(h))
+            layers += [nn.ReLU(inplace=True), nn.Dropout(dropout)]
+            in_dim = h
+        layers.append(nn.Linear(in_dim, num_classes))
+        self.net = nn.Sequential(*layers)
+        self._init_weights()
+        logger.info(f"Initialized MLPIDS: input={input_dim}, hidden={hidden_dims}, batchnorm={use_batchnorm}, classes={num_classes}")
+
+    def _init_weights(self) -> None:
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.xavier_uniform_(m.weight)
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.net(x)
+
+    def count_parameters(self) -> int:
+        return sum(p.numel() for p in self.parameters() if p.requires_grad)
+
+
+class CNNIDS(nn.Module):
+    """1-D CNN for intrusion detection.
+
+    Treats the feature vector as a 1-D sequence of length input_dim and
+    applies stacked Conv1d → BatchNorm → ReLU → MaxPool blocks, then
+    global average pooling into a classification head.
+    """
+
+    def __init__(
+        self,
+        input_dim: int,
+        num_classes: int = 2,
+        channels: list = None,
+        dropout: float = 0.3,
+    ) -> None:
+        super().__init__()
+        channels = channels or [64, 128, 256]
+        conv_layers: list = []
+        in_ch = 1
+        for ch in channels:
+            conv_layers += [
+                nn.Conv1d(in_ch, ch, kernel_size=3, padding=1),
+                nn.BatchNorm1d(ch),
+                nn.ReLU(inplace=True),
+                nn.MaxPool1d(kernel_size=2, stride=2),
+            ]
+            in_ch = ch
+        self.conv = nn.Sequential(*conv_layers)
+        self.pool = nn.AdaptiveAvgPool1d(1)
+        self.classifier = nn.Sequential(
+            nn.Linear(channels[-1], 128),
+            nn.ReLU(inplace=True),
+            nn.Dropout(dropout),
+            nn.Linear(128, num_classes),
+        )
+        self._init_weights()
+        logger.info(f"Initialized CNNIDS: input={input_dim}, channels={channels}, classes={num_classes}")
+
+    def _init_weights(self) -> None:
+        for m in self.modules():
+            if isinstance(m, (nn.Linear, nn.Conv1d)):
+                nn.init.xavier_uniform_(m.weight)
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = x.unsqueeze(1)           # (B, 1, input_dim)
+        x = self.conv(x)             # (B, C_last, reduced_len)
+        x = self.pool(x).squeeze(-1) # (B, C_last)
+        return self.classifier(x)
+
+    def count_parameters(self) -> int:
+        return sum(p.numel() for p in self.parameters() if p.requires_grad)
+
+
+class LSTMIDS(nn.Module):
+    """Bidirectional LSTM for intrusion detection.
+
+    Treats each feature as a time-step (input_size=1) and passes the
+    sequence through a stacked BiLSTM; the final time-step output is
+    fed to the classification head.
+    """
+
+    def __init__(
+        self,
+        input_dim: int,
+        num_classes: int = 2,
+        hidden_size: int = 128,
+        num_layers: int = 2,
+        dropout: float = 0.3,
+        bidirectional: bool = True,
+    ) -> None:
+        super().__init__()
+        self.bidirectional = bidirectional
+        self.lstm = nn.LSTM(
+            input_size=1,
+            hidden_size=hidden_size,
+            num_layers=num_layers,
+            batch_first=True,
+            bidirectional=bidirectional,
+            dropout=dropout if num_layers > 1 else 0.0,
+        )
+        out_size = hidden_size * 2 if bidirectional else hidden_size
+        self.classifier = nn.Sequential(
+            nn.Linear(out_size, 64),
+            nn.ReLU(inplace=True),
+            nn.Dropout(dropout),
+            nn.Linear(64, num_classes),
+        )
+        logger.info(
+            f"Initialized LSTMIDS: input={input_dim}, hidden={hidden_size}, "
+            f"layers={num_layers}, bidirectional={bidirectional}, classes={num_classes}"
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = x.unsqueeze(-1)          # (B, input_dim, 1)
+        out, _ = self.lstm(x)        # (B, input_dim, hidden*dirs)
+        last = out[:, -1, :]         # (B, hidden*dirs)
+        return self.classifier(last)
+
+    def count_parameters(self) -> int:
+        return sum(p.numel() for p in self.parameters() if p.requires_grad)
+
+
+class TransformerIDS(nn.Module):
+    """Standard (full) Transformer encoder for intrusion detection.
+
+    Same embedding + pooling + classifier structure as LinformerIDS but
+    uses PyTorch's built-in full O(n²) multi-head self-attention instead
+    of the linear Linformer projection, providing a direct comparison.
+    """
+
+    def __init__(
+        self,
+        input_seq_len: int,
+        num_classes: int = 2,
+        dim: int = 64,
+        depth: int = 4,
+        heads: int = 4,
+        dropout: float = 0.1,
+        ff_hidden_mult: int = 4,
+    ) -> None:
+        super().__init__()
+        self.embedding = nn.Linear(1, dim)
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=dim,
+            nhead=heads,
+            dim_feedforward=dim * ff_hidden_mult,
+            dropout=dropout,
+            batch_first=True,
+            norm_first=True,
+        )
+        self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=depth)
+        self.pool = nn.AdaptiveAvgPool1d(1)
+        self.classifier = nn.Sequential(
+            nn.Linear(dim, dim),
+            nn.ReLU(inplace=True),
+            nn.Dropout(dropout),
+            nn.Linear(dim, num_classes),
+        )
+        self._init_weights()
+        logger.info(
+            f"Initialized TransformerIDS: seq_len={input_seq_len}, dim={dim}, "
+            f"depth={depth}, heads={heads}, classes={num_classes}"
+        )
+
+    def _init_weights(self) -> None:
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.xavier_uniform_(m.weight)
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = x.unsqueeze(-1)          # (B, seq_len, 1)
+        x = self.embedding(x)        # (B, seq_len, dim)
+        x = self.encoder(x)          # (B, seq_len, dim)
+        x = x.transpose(1, 2)        # (B, dim, seq_len)
+        x = self.pool(x).squeeze(-1) # (B, dim)
+        return self.classifier(x)
+
+    def count_parameters(self) -> int:
+        return sum(p.numel() for p in self.parameters() if p.requires_grad)
+
+
+class ModelFactory:
+    """Factory class for creating IDS models.
+
+    Supports: linformer, transformer, lstm, cnn, mlp.
     """
 
     @staticmethod
@@ -446,29 +655,67 @@ class ModelFactory:
         input_seq_len: int,
         num_classes: int,
         model_config: dict,
-    ) -> LinformerIDS:
-        """Create a Linformer-IDS model from configuration.
+        model_type: str = "linformer",
+    ) -> nn.Module:
+        """Create an IDS model from configuration.
 
         Args:
             input_seq_len: Number of input features.
             num_classes: Number of output classes.
-            model_config: Dictionary containing model hyperparameters.
+            model_config: Dictionary of model hyperparameters.
+            model_type: One of 'linformer', 'transformer', 'lstm', 'cnn', 'mlp'.
 
         Returns:
-            Initialized LinformerIDS model.
+            Initialised model.
         """
-        model = LinformerIDS(
-            input_seq_len=input_seq_len,
-            num_classes=num_classes,
-            dim=model_config.get("dim", 64),
-            depth=model_config.get("depth", 4),
-            heads=model_config.get("heads", 4),
-            k=model_config.get("k", 16),
-            dropout=model_config.get("dropout", 0.1),
-            ff_hidden_mult=model_config.get("ff_hidden_mult", 4),
-        )
+        model_type = model_type.lower()
+
+        if model_type == "mlp":
+            model = MLPIDS(
+                input_dim=input_seq_len,
+                num_classes=num_classes,
+                hidden_dims=model_config.get("hidden_dims", [256, 128, 64]),
+                dropout=model_config.get("dropout", 0.3),
+                use_batchnorm=model_config.get("use_batchnorm", True),
+            )
+        elif model_type == "cnn":
+            model = CNNIDS(
+                input_dim=input_seq_len,
+                num_classes=num_classes,
+                channels=model_config.get("channels", [64, 128, 256]),
+                dropout=model_config.get("dropout", 0.3),
+            )
+        elif model_type == "lstm":
+            model = LSTMIDS(
+                input_dim=input_seq_len,
+                num_classes=num_classes,
+                hidden_size=model_config.get("hidden_size", 128),
+                num_layers=model_config.get("num_layers", 2),
+                dropout=model_config.get("dropout", 0.3),
+                bidirectional=model_config.get("bidirectional", True),
+            )
+        elif model_type == "transformer":
+            model = TransformerIDS(
+                input_seq_len=input_seq_len,
+                num_classes=num_classes,
+                dim=model_config.get("dim", 64),
+                depth=model_config.get("depth", 4),
+                heads=model_config.get("heads", 4),
+                dropout=model_config.get("dropout", 0.1),
+                ff_hidden_mult=model_config.get("ff_hidden_mult", 4),
+            )
+        else:  # linformer (default)
+            model = LinformerIDS(
+                input_seq_len=input_seq_len,
+                num_classes=num_classes,
+                dim=model_config.get("dim", 64),
+                depth=model_config.get("depth", 4),
+                heads=model_config.get("heads", 4),
+                k=model_config.get("k", 16),
+                dropout=model_config.get("dropout", 0.1),
+                ff_hidden_mult=model_config.get("ff_hidden_mult", 4),
+            )
 
         num_params = model.count_parameters()
-        logger.info(f"Created LinformerIDS model with {num_params:,} trainable parameters")
-
+        logger.info(f"Created {model_type.upper()} model with {num_params:,} trainable parameters")
         return model

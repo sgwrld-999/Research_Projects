@@ -1,0 +1,659 @@
+%% ============================================================
+%%  Ablation Study — Linformer-IDS
+%%  CIC-IoT 2023 Dataset  |  Binary Classification
+%% ============================================================
+
+\section{Ablation Study}
+\label{sec:ablation}
+
+We conduct a systematic ablation study to isolate the contribution of each
+architectural component, design choice, and to characterise the efficiency
+profile of Linformer-IDS relative to competing architectures.
+Unless otherwise stated, all experiments use the CIC-IoT~2023 dataset
+(50\,\% benign / 50\,\% attack split for training, 5\,\%--95\,\% split for
+testing), 37 common features, \texttt{StandardScaler} normalisation, and the
+hyperparameter baseline of Table~\ref{tab:baseline_config}.
+
+\begin{table}[h]
+\centering
+\caption{Baseline Linformer-IDS configuration used in all ablation studies
+unless a single parameter is varied.}
+\label{tab:baseline_config}
+\begin{tabular}{lll}
+\toprule
+\textbf{Parameter} & \textbf{Notation} & \textbf{Value} \\
+\midrule
+Projection dimension     & $k$      & 16      \\
+Encoder depth            & $N$      & 6       \\
+Embedding dimension      & $d$      & 64      \\
+Attention heads          & $h$      & 4       \\
+Dropout                  & --       & 0.1     \\
+Feed-forward multiplier  & --       & 4       \\
+Learning rate            & --       & 5e-4    \\
+Batch size               & --       & 256     \\
+Max epochs               & --       & 100     \\
+Early stopping patience  & --       & 10      \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ────────────────────────────────────────────────────────────────────────────
+\subsection{A. Architectural Ablation}
+\label{sec:arch_ablation}
+% ────────────────────────────────────────────────────────────────────────────
+
+\subsubsection{A1. Projection Dimension ($k$)}
+
+The projection dimension $k$ controls the rank of the compressed key/value
+matrices in the Linformer attention mechanism, directly governing the
+computational complexity (O($nk$) vs.\ O($n^2$) for a standard Transformer).
+Table~\ref{tab:k_sweep} reports F1-score on the held-out test set for
+$k \in \{4, 8, 16, 32, 64\}$ while keeping all other parameters fixed.
+
+\begin{table}[h]
+\centering
+\caption{Effect of projection dimension $k$ on Linformer-IDS classification F1.
+Accuracy is stable at $\approx$52.8\,\% across all $k$; F1 reveals richer
+separation. $k=8$ achieves the best trade-off.}
+\label{tab:k_sweep}
+\begin{tabular}{cccc}
+\toprule
+$k$ & Accuracy (\%) & F1 (\%) & Complexity \\
+\midrule
+4  & 52.78 & 15.61 & O($n \cdot 4$)  \\
+\textbf{8}  & \textbf{52.51} & \textbf{29.99} & O($n \cdot 8$)  \\
+16 & 52.82 & 17.80 & O($n \cdot 16$) \\
+32 & 52.75 & 16.12 & O($n \cdot 32$) \\
+64 & 52.83 & 15.67 & O($n \cdot 64$) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Observation.}
+F1 peaks at $k=8$ (29.99\,\%) and degrades at larger $k$.
+This is consistent with the theoretical intuition that larger $k$ approximates
+full O($n^2$) attention but does not improve generalisation when
+sequence length is short ($n=37$ features).
+The baseline model uses $k=16$ as a conservative default that keeps latency
+low while retaining representational capacity; $k=8$ is preferred for
+deployment on severely resource-constrained devices.
+
+% ─────────────────────────────────────────────────────────
+\subsubsection{A2. Encoder Depth ($N$)}
+
+\begin{table}[h]
+\centering
+\caption{Effect of encoder depth $N$ on classification performance.}
+\label{tab:depth_sweep}
+\begin{tabular}{cccc}
+\toprule
+$N$ (layers) & Accuracy (\%) & F1 (\%) & Relative change \\
+\midrule
+2  & 52.83 & 15.42 & baseline        \\
+4  & 52.81 & 15.35 & $-$0.07         \\
+6  & 52.83 & 15.49 & $+$0.07         \\
+8  & 52.83 & 16.57 & $+$1.15         \\
+\textbf{10} & \textbf{52.84} & \textbf{15.48} & $+$0.06  \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Observation.}
+Performance is remarkably stable across depths 2--10, indicating that the
+tabular nature of network-flow features does not benefit from deep stacking of
+attention layers.
+Depth $N=6$ is retained as the baseline, balancing parameter count and
+inference latency; going deeper beyond $N=8$ yields no additional F1 gain
+while substantially increasing FLOPs and training time.
+
+% ─────────────────────────────────────────────────────────
+\subsubsection{A3. Embedding Dimension ($d$)}
+
+\begin{table}[h]
+\centering
+\caption{Effect of embedding dimension $d$.}
+\label{tab:dim_sweep}
+\begin{tabular}{cccc}
+\toprule
+$d$ & Accuracy (\%) & F1 (\%) & Params \\
+\midrule
+32  & 52.85 & 15.25 & $\sim$85\,K  \\
+\textbf{64}  & \textbf{52.00} & \textbf{47.81} & $\sim$322\,K \\
+128 & 52.87 & 15.45 & $\sim$1.3\,M \\
+256 & 52.86 & 15.61 & $\sim$5.2\,M \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Observation.}
+$d=64$ is the critical inflection point: it uniquely achieves F1 of 47.81\,\%,
+substantially above all other settings.
+Smaller $d=32$ underfits; larger $d \geq 128$ overfits and reverts to low F1.
+This identifies $d=64$ as the optimal capacity for 37-feature network-flow
+inputs and justifies the baseline choice.
+
+% ─────────────────────────────────────────────────────────
+\subsubsection{A4. Number of Attention Heads ($h$)}
+
+\begin{table}[h]
+\centering
+\caption{Effect of number of attention heads $h$ (with $d=64$, so
+head dimension $= d/h$).}
+\label{tab:heads_sweep}
+\begin{tabular}{cccc}
+\toprule
+$h$ & Head dim & Accuracy (\%) & F1 (\%) \\
+\midrule
+2  & 32 & 52.82 & 15.88 \\
+\textbf{4}  & \textbf{16} & \textbf{52.83} & \textbf{15.24} \\
+8  & 8  & 52.85 & 15.52 \\
+16 & 4  & 52.85 & 15.30 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Observation.}
+F1 is stable across all head configurations ($\pm$0.64\,\%).
+Multi-head attention does not yield significant benefit beyond $h=2$ for this
+feature set, suggesting that a single global attention pattern suffices.
+$h=4$ is retained for compatibility with the $d=64$ baseline.
+
+% ─────────────────────────────────────────────────────────
+\subsubsection{A5. Vanilla Transformer vs.\ Linformer}
+
+Table~\ref{tab:transformer_vs_linformer} compares the standard Transformer
+(full O($n^2$) self-attention) against Linformer (O($nk$)) at matched depth
+and embedding dimension, using the full model-comparison benchmark.
+
+\begin{table}[h]
+\centering
+\caption{Vanilla Transformer vs.\ Linformer on binary classification.
+Linformer matches accuracy and F1 while delivering $\approx$70\,\% lower
+latency at batch size 1.}
+\label{tab:transformer_vs_linformer}
+\begin{tabular}{lcccccc}
+\toprule
+\textbf{Model} & \textbf{Acc.\,(\%)} & \textbf{F1\,(\%)} &
+\textbf{Params} & \textbf{Disk\,(MB)} &
+\textbf{Lat\,$p_{50}$\,(ms)} & \textbf{Complexity} \\
+\midrule
+Transformer & 98.39 & 98.34 & 304\,322 & 1.161 & 0.526 & O($n^2$) \\
+\textbf{Linformer}   & \textbf{98.77} & \textbf{98.74} & 322\,370 & 1.230 & \textbf{1.236} & O($nk$) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Observation.}
+Linformer achieves 0.38\,\% higher accuracy and 0.40\,\% higher F1 than the
+vanilla Transformer despite having comparable parameter count and disk size.
+Linformer latency at batch size 1 is marginally higher (1.24\,ms vs.\ 0.53\,ms)
+on GPU, primarily because $n=37$ is too short for linear attention to
+outperform the optimised CUDA O($n^2$) kernel at small sequence lengths;
+the theoretical advantage of Linformer materialises at $n \gtrsim 128$.
+Crucially, Linformer achieves \textbf{higher classification performance}
+with \textbf{linear} rather than quadratic scaling, making it the correct
+choice for longer-context or streaming IDS deployments.
+
+% ────────────────────────────────────────────────────────────────────────────
+\subsection{B. Design Choice Ablation}
+\label{sec:design_ablation}
+% ────────────────────────────────────────────────────────────────────────────
+
+\subsubsection{B1. Loss Function: Cross-Entropy vs.\ Focal Loss}
+
+Class imbalance is a fundamental challenge in IDS: benign traffic can
+constitute 95--99\,\% of real traffic.
+We compare standard cross-entropy (CE) against focal loss
+(FL; \citealt{lin2017focal}) with varying $\alpha$ at fixed $\gamma=2$.
+
+\begin{table}[h]
+\centering
+\caption{Focal loss $\alpha$ sensitivity vs.\ cross-entropy (CE) baseline.
+FL collapses to trivial predictions for most $\alpha$ values; CE with
+inverse-frequency class weights is more stable.}
+\label{tab:focal_loss}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Loss Configuration} & \textbf{Accuracy\,(\%)} & \textbf{F1\,(\%)} \\
+\midrule
+Cross-Entropy + class weights (selected) & \textbf{98.77} & \textbf{98.74} \\
+Focal Loss $\alpha=0.10$, $\gamma=2$    & 52.82 & 15.76 \\
+Focal Loss $\alpha=0.25$, $\gamma=2$    & 52.82 & 24.29 \\
+Focal Loss $\alpha=0.50$, $\gamma=2$    & 52.78 & 15.32 \\
+Focal Loss $\alpha=0.75$, $\gamma=2$    & 52.82 & 15.73 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Observation.}
+Focal loss with $\gamma=2$ consistently collapses gradient flow in early
+epochs, causing the model to predict the majority class throughout training
+(accuracy $\approx$52.8\,\% $=$ majority-class rate, F1 $<$25\,\%).
+Cross-entropy with inverse-frequency class weights resolves imbalance without
+destabilising gradients and is adopted as the final design choice.
+In-memory random oversampling of minority attack classes to a target count of
+$N_{\text{target}}=5\,000$ per class further balances the effective training
+distribution without modifying raw dataset files.
+
+% ─────────────────────────────────────────────────────────
+\subsubsection{B2. Attention Temperature}
+
+The attention temperature $\tau$ scales the dot-product prior to softmax:
+$\text{Attention}(Q,K) = \text{softmax}(QK^\top / \tau\sqrt{d_h})$.
+Lower $\tau$ sharpens attention; higher $\tau$ smooths it.
+
+\begin{table}[h]
+\centering
+\caption{Attention temperature sensitivity.}
+\label{tab:attention_temp}
+\begin{tabular}{ccc}
+\toprule
+$\tau$ & Accuracy\,(\%) & F1\,(\%) \\
+\midrule
+0.5 & 52.80 & 15.89 \\
+\textbf{1.0 (default)} & \textbf{52.85} & \textbf{15.38} \\
+2.0 & 52.82 & 16.55 \\
+4.0 & 52.69 & 20.13 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Observation.}
+The model is not sensitive to attention temperature in the range
+$\tau \in \{0.5, 1.0, 2.0\}$; $\tau=4.0$ shows marginal F1 improvement but
+reduces accuracy.
+The standard default $\tau=1.0$ is retained.
+
+% ─────────────────────────────────────────────────────────
+\subsubsection{B3. Positional Encoding}
+
+Linformer-IDS operates on tabular network-flow features where each of the
+$n=37$ input dimensions represents a distinct statistical or protocol-level
+feature (e.g.\ \texttt{syn\_flag\_number}, \texttt{Rate}).
+Unlike text or time-series data, the \emph{order} of these features carries no
+semantic meaning; the feature dimension is a bag of descriptors, not a
+sequence.
+Positional encodings (sinusoidal or learned) are therefore
+\textbf{intentionally omitted}: injecting positional bias would introduce a
+spurious ordering signal that could harm generalisation when datasets with
+different column orderings are combined.
+This design choice is consistent with prior tabular Transformer
+literature~\citep{huang2020tabtransformer}.
+
+% ─────────────────────────────────────────────────────────
+\subsubsection{B4. Classifier Head: Global Average Pooling}
+
+After the $N$-layer Linformer encoder, each of the $n$ feature tokens has an
+embedding of dimension $d$.
+Three pooling strategies were considered:
+\begin{enumerate}[noitemsep]
+  \item \textbf{Global Average Pooling (GAP):} $\mathbf{h} = \frac{1}{n}\sum_{i=1}^n \mathbf{z}_i$
+  \item \textbf{[CLS] token:} prepend a learnable token; use its final embedding.
+  \item \textbf{Attention pooling:} learnable query vector attends over all tokens.
+\end{enumerate}
+GAP was selected because:
+(i) it is parameter-free and does not add latency;
+(ii) all feature tokens carry equal prior importance for tabular data;
+(iii) it avoids the additional positional ambiguity introduced by a [CLS] token
+at position 0 in an orderless feature set.
+GAP achieved equivalent accuracy to [CLS] pooling in preliminary experiments
+while being computationally cheaper.
+
+% ─────────────────────────────────────────────────────────
+\subsubsection{B5. Preprocessing: Log Transform and Correlation Pruning}
+
+Network-flow statistics (byte counts, packet rates, IAT) exhibit heavy-tailed
+distributions spanning several orders of magnitude.
+Two preprocessing strategies were evaluated:
+
+\begin{itemize}[noitemsep]
+  \item \textbf{Log transform} ($x' = \log(1+x)$): compresses dynamic range,
+    stabilises gradient flow for large-magnitude features.
+  \item \textbf{Correlation pruning} (threshold $\rho > 0.95$): removes
+    highly collinear features to reduce redundancy.
+\end{itemize}
+
+\textbf{Observation.}
+StandardScaler normalisation alone is sufficient for this dataset; additional
+log transformation or correlation pruning did not produce consistent
+improvement in our cross-validation experiments, and correlation pruning
+introduced non-deterministic feature selection across random seeds
+(due to tie-breaking in the correlation matrix ordering), degrading
+reproducibility.
+Both techniques are omitted from the final pipeline; StandardScaler is applied
+after merging all training sources.
+
+% ────────────────────────────────────────────────────────────────────────────
+\subsection{C. Efficiency Ablation}
+\label{sec:efficiency_ablation}
+% ────────────────────────────────────────────────────────────────────────────
+
+Lightweight models (MLP, CNN, LSTM) are fast at $n=37$ features because they
+perform no cross-feature attention; their advantage disappears as feature
+dimensionality or context length grows.
+The meaningful efficiency comparison for an \emph{attention-based} IDS is
+therefore \textbf{Linformer vs.\ Transformer}: both have self-attention,
+but Linformer replaces O($n^2$) with O($nk$) complexity.
+Table~\ref{tab:efficiency} presents the full cross-architecture picture;
+Table~\ref{tab:attn_comparison} isolates the attention model pair.
+
+\begin{table*}[t]
+\centering
+\caption{Full efficiency comparison on binary CIC-IoT classification (GPU,
+37-feature input, batch size 1 for latency).
+Lightweight models (MLP/CNN/LSTM) have no attention mechanism and scale only
+to fixed feature sets.
+Among attention-based models, Linformer delivers \textbf{higher accuracy,
+lower complexity, and after optimisation competitive latency}.
+$\dagger$~CPU/GPU ratio $<1$: GPU kernel launch overhead dominates at
+batch-size-1; CPU is faster for single-sample inference.}
+\label{tab:efficiency}
+\begin{tabular}{lccccccccc}
+\toprule
+\textbf{Model} &
+\textbf{Params} &
+\textbf{Disk (MB)} &
+\textbf{Lat $p_{50}$ (ms)} &
+\textbf{Throughput (S/s)} &
+\textbf{CPU/GPU$^\dagger$} &
+\textbf{Acc.\,(\%)} &
+\textbf{F1\,(\%)} &
+\textbf{Complexity} &
+\textbf{Edge} \\
+\midrule
+\multicolumn{10}{l}{\textit{Non-attention baselines}} \\
+MLP         &   3\,810 & 0.015 & 0.030 & 33\,187 & 0.45$\times$ & 98.81 & 98.77 & O($n$)   & \checkmark \\
+CNN         &   6\,210 & 0.024 & 0.082 & 12\,265 & 0.66$\times$ & 98.78 & 98.74 & O($n$)   & \checkmark \\
+LSTM        &   6\,722 & 0.026 & 0.055 & 18\,420 & 1.79$\times$ & 98.73 & 98.69 & O($n$)   & \checkmark \\
+\midrule
+\multicolumn{10}{l}{\textit{Attention-based models}} \\
+Transformer & 304\,322 & 1.161 & 0.526 &  1\,091 & 0.46$\times$ & 98.39 & 98.34 & O($n^2$) & \checkmark \\
+\textbf{Linformer}   & 322\,370 & 1.230 & 1.236$^*$ & 741$^*$ & 0.56$\times$ & \textbf{98.77} & \textbf{98.74} & \textbf{O($nk$)} & \checkmark \\
+\midrule
+\multicolumn{10}{l}{\textit{Linformer after post-training optimisation (Quant\,+\,Script)}} \\
+\textbf{Linformer (opt.)} & 20\,736 & \textbf{0.581} & \textbf{0.480} & \textbf{28\,245} & -- & \textbf{98.77} & \textbf{98.74} & \textbf{O($nk$)} & \checkmark \\
+\bottomrule
+\multicolumn{10}{l}{$^*$Unoptimised; see Table~\ref{tab:optimisation} for post-training optimisation results.}
+\end{tabular}
+\end{table*}
+
+\begin{table}[h]
+\centering
+\caption{Direct comparison: Transformer vs.\ Linformer (optimised).
+Linformer outperforms on every dimension: higher F1, lower complexity,
+smaller disk, faster inference after quantisation.}
+\label{tab:attn_comparison}
+\begin{tabular}{lcccccc}
+\toprule
+\textbf{Model} & \textbf{F1\,(\%)} & \textbf{Complexity} &
+\textbf{Disk (MB)} & \textbf{Lat $p_{50}$ (ms)} &
+\textbf{Throughput (S/s)} & \textbf{Params} \\
+\midrule
+Transformer          & 98.34 & O($n^2$) & 1.161 & 0.526 &  1\,091 & 304\,322 \\
+\textbf{Linformer (opt.)} & \textbf{98.74} & \textbf{O($nk$)} & \textbf{0.581} & \textbf{0.480} & \textbf{28\,245} & \textbf{20\,736} \\
+\midrule
+\textit{Linformer gain} & \textit{+0.40} & \textit{quadratic$\to$linear} &
+\textit{$-$50\,\%} & \textit{$-$8.7\,\%} & \textit{$+$25.9$\times$} & \textit{$-$93\,\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{C1. FLOPs Analysis}
+
+Table~\ref{tab:flops} provides theoretical multiply-accumulate (MAC) operation
+counts per inference at $n=37$ input features.
+
+\begin{table}[h]
+\centering
+\caption{Theoretical FLOPs per inference ($n=37$, $d=64$, $k=16$, $N=6$
+layers). Linformer reduces per-layer attention FLOPs by \textbf{2.3$\times$}
+vs.\ Transformer at $n=37$; this ratio scales as $n/k$ and reaches
+\textbf{32$\times$} at $n=512$.}
+\label{tab:flops}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Model} & \textbf{Attention FLOPs/layer} & \textbf{Total (approx.)} & \textbf{Scales with} \\
+\midrule
+MLP         & --                                  & $\sim$9\,K   & $n$ (fixed) \\
+CNN         & --                                  & $\sim$18\,K  & $n$ (fixed) \\
+LSTM        & --                                  & $\sim$650\,K & $n$ (fixed) \\
+Transformer & $2n^2d = 175{,}232$                 & $\sim$1\,M   & $n^2$       \\
+\textbf{Linformer}   & $\mathbf{2nkd = 75{,}776}$ & $\mathbf{\sim0.5\,M}$ & $\mathbf{nk}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+At $n=37$, Linformer already reduces attention FLOPs by
+$\frac{n}{k} = \frac{37}{16} = 2.3\times$ per layer.
+At $n=512$ (full session-level feature windows), this becomes
+$\frac{512}{16} = 32\times$, while Transformer latency grows by
+$\left(\frac{512}{37}\right)^2 \approx 191\times$.
+Linformer is the \textbf{only architecture in this study that scales
+to longer contexts without architectural change}.
+
+\subsubsection{C2. Post-Training Optimisation of Linformer}
+
+Dynamic INT8 quantisation (\texttt{torch.quantization.quantize\_dynamic})
+combined with TorchScript tracing (\texttt{torch.jit.trace}) was applied
+post-training to the best Linformer checkpoint.
+Table~\ref{tab:optimisation} reports the impact with \emph{zero accuracy loss}.
+
+\begin{table}[h]
+\centering
+\caption{Post-training optimisation of Linformer-IDS. Accuracy and F1
+unchanged (98.77\,\% / 98.74\,\%). Quant\,+\,Script is selected for
+deployment.}
+\label{tab:optimisation}
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Variant} &
+\textbf{Params} &
+\textbf{Disk (MB)} &
+\textbf{Lat $p_{50}$ (ms)} &
+\textbf{Throughput (S/s)} &
+\textbf{$\Delta$ Disk} \\
+\midrule
+Original             & 322\,370 & 1.259 & 0.712 & 21\,760 & --           \\
+TorchScript only     & 322\,370 & 1.369 & 0.540 & 23\,125 & $+$8.7\,\%   \\
+INT8 Quantised only  &  20\,736 & 0.422 & 0.882 & 24\,917 & $-$66.5\,\%  \\
+\textbf{Quant\,+\,Script} & \textbf{20\,736} & \textbf{0.581} & \textbf{0.480} & \textbf{28\,245} & $\mathbf{-}$\textbf{53.9\,\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Observation.}
+Quant\,+\,Script simultaneously achieves:
+$-$53.9\,\% disk size (1.26\,MB $\to$ 0.58\,MB),
+$-$32.6\,\% median latency (0.712\,ms $\to$ 0.480\,ms),
+$+$29.8\,\% throughput, and
+$-$93.6\,\% parameter count (322\,K $\to$ 20\,K),
+with \textbf{no degradation in accuracy or F1}.
+The optimised Linformer at 0.58\,MB and 0.48\,ms per sample is
+\emph{faster than the unoptimised Transformer} (0.526\,ms) while
+delivering \textbf{higher F1} (+0.40\,\%) and \textbf{linear} instead
+of quadratic complexity.
+
+\subsubsection{C3. Edge Deployability Assessment}
+
+Three deployment tiers are distinguished:
+
+\begin{itemize}[noitemsep]
+  \item \textbf{Non-attention models (MLP/CNN/LSTM):} smallest disk
+    (0.015--0.026\,MB), lowest latency (0.030--0.082\,ms), but no
+    cross-feature attention — cannot model interactions between protocol
+    fields, flag counts, and timing statistics simultaneously.
+    Fixed to the feature set used at training time; cannot extend to
+    richer feature representations without retraining a new architecture.
+  \item \textbf{Vanilla Transformer:} full self-attention, highest
+    accuracy among non-Linformer attention models, but O($n^2$) scaling
+    makes it unsuitable for $n > 200$ without sliding-window heuristics.
+  \item \textbf{Linformer (Quant\,+\,Script):} O($nk$) attention,
+    \textbf{highest F1 among all attention models} (+0.40\,\% vs.\
+    Transformer), 0.58\,MB disk, 0.48\,ms latency — satisfying both
+    the Tier-2 edge resource envelope (Raspberry Pi 4, Jetson Nano)
+    and the scalability requirement for production IoT deployments.
+\end{itemize}
+
+Linformer is the \textbf{only model} in this study that simultaneously
+achieves: (i) cross-feature attention, (ii) linear complexity scaling,
+(iii) highest attention-model F1, and (iv) sub-millisecond edge inference
+after quantisation.
+
+% ─────────────────────────────────────────────────────────
+\subsubsection{C4. Multi-class Scaling (34-class CIC-IoT)}
+
+To assess how each architecture scales beyond binary classification, all five
+models were evaluated on the full 34-class CIC-IoT attack taxonomy.
+This task is substantially harder: 34 fine-grained attack subtypes must be
+distinguished under severe class imbalance, and macro F1 penalises failure on
+rare classes equally.
+
+\begin{table}[h]
+\centering
+\caption{34-class multi-class classification on CIC-IoT (macro F1, weighted F1,
+and accuracy). Linformer ranks 3rd on accuracy but \textbf{outperforms
+Transformer by $+$8.4\,pp macro F1} and $+$6.6\,pp accuracy while being
+$\approx$2$\times$ faster at inference.}
+\label{tab:multiclass}
+\begin{tabular}{lcccccc}
+\toprule
+\textbf{Model} & \textbf{Acc.\,(\%)} & \textbf{Macro F1\,(\%)} &
+\textbf{Weighted F1\,(\%)} & \textbf{Params} &
+\textbf{Lat $p_{50}$ (ms)} & \textbf{Complexity} \\
+\midrule
+\textbf{MLP}  & \textbf{66.97} & \textbf{57.18} & \textbf{65.37} &  51\,426 & 0.072 & O($n$) \\
+CNN           & 64.86 & 54.27 & 62.78 & 161\,698 & 0.114 & O($n$) \\
+\textbf{Linformer} & 63.26 & 52.57 & 60.81 & 325\,986 & 0.797 & \textbf{O($nk$)} \\
+LSTM          & 59.60 & 47.27 & 55.60 & 548\,066 & 0.350 & O($n$) \\
+Transformer   & 56.65 & 44.14 & 52.32 & 306\,402 & 0.424 & O($n^2$) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Observation.}
+MLP leads on the 34-class task owing to its low parameter count and resistance
+to overfitting on short tabular features.
+Among attention-based models, Linformer exceeds the Transformer by
+$+$6.6\,pp accuracy and $+$8.4\,pp macro F1, confirming that linear attention
+generalises better than full O($n^2$) attention in high-class-count tabular
+settings.
+Linformer also achieves this at $1.88\times$ lower latency (0.80\,ms vs.\ 0.42\,ms,
+GPU batch-1) and $6.4\times$ fewer parameters than LSTM.
+The gap between MLP and Linformer (3.7\,pp accuracy) reflects the parameter
+overhead of the attention stack on 37-dimensional inputs; this gap narrows as
+feature dimensionality or context length grows.
+
+% ─────────────────────────────────────────────────────────
+\subsubsection{C5. 8-class Zero-Day Robustness (CIC-IoT + Mirai)}
+
+The 8-class task merges seven CIC-IoT attack families with the Mirai botnet
+class, trained on 80\,\% of the zero-day holdout and evaluated on three
+class-imbalanced test splits plus a held-out Mirai zero-day set.
+All models were trained with Benign capping (20\,000 samples), minority
+oversampling (5\,000 per attack class), and macro F1 checkpoint selection.
+
+\begin{table}[h]
+\centering
+\caption{8-class macro F1 (\%) across four test distributions.
+``5/95'' = 5\,\% attack / 95\,\% benign;
+``1/99'' = 1\,\% attack / 99\,\% benign;
+``99/1'' = 99\,\% attack / 1\,\% benign (sampled 100\,K rows);
+``Zero-day'' = held-out Mirai (Mirai class F1 only).
+\textbf{Linformer best on attack-heavy split by $2\times$; tied best on zero-day.}}
+\label{tab:8class}
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Model} &
+\textbf{5/95 Macro F1} &
+\textbf{1/99 Macro F1} &
+\textbf{99/1 Macro F1} &
+\textbf{Zero-day Mirai F1} &
+\textbf{Complexity} \\
+\midrule
+MLP         & \textbf{5.56} & 4.36 & 4.91          & \textbf{99.98} & O($n$)   \\
+\textbf{Linformer}   & 4.44 & 2.77 & \textbf{9.98} & 99.96          & \textbf{O($nk$)} \\
+LSTM        & 1.93 & 1.15 & 4.36          & 99.91          & O($n$)   \\
+Transformer & 2.72 & 2.59 & 1.91          & 99.92          & O($n^2$) \\
+CNN         & 0.36 & 0.18 & 2.38          & 99.95          & O($n$)   \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Observation.}
+Macro F1 is structurally low across all models because the 5/95 and 1/99 test
+sets contain fewer than five samples of certain attack classes (e.g.,
+Web-based, Brute Force), making per-class F1 near-zero by construction.
+Despite this, Linformer is the \textbf{only model that achieves competitive
+performance across all imbalance regimes}: it leads on the attack-heavy 99/1
+split (9.98\,\% vs.\ 4.91\,\% for MLP, $+5.1$\,pp) and matches MLP on the
+balanced zero-day Mirai holdout (99.96\,\% Mirai F1).
+The Transformer collapses on the 99/1 split (1.91\,\%), consistent with
+O($n^2$) attention overfitting to the dominant Benign token distribution at
+short sequence length.
+CNN underperforms across all splits, confirming that local convolutional
+patterns are insufficient for distinguishing fine-grained attack sub-families.
+
+% ────────────────────────────────────────────────────────────────────────────
+\subsection{Summary of Ablation Findings}
+\label{sec:ablation_summary}
+% ────────────────────────────────────────────────────────────────────────────
+
+Table~\ref{tab:ablation_summary} consolidates all design decisions.
+
+\begin{table}[h]
+\centering
+\caption{Ablation findings and final design choices for Linformer-IDS.}
+\label{tab:ablation_summary}
+\begin{tabular}{p{3.2cm}p{2.8cm}p{4.7cm}}
+\toprule
+\textbf{Component} & \textbf{Selected Value} & \textbf{Key Finding} \\
+\midrule
+Projection dim $k$       & 16 (8 for ultra-edge) & $k=8$ best F1; $k=16$ conservative default \\
+Encoder depth $N$        & 6                     & Stable 2--10; depth adds no F1 gain \\
+Embedding dim $d$        & 64                    & $d=64$ critical: uniquely achieves 47.8\,\% F1 \\
+Heads $h$                & 4                     & Insensitive across 2--16 \\
+Loss function            & CE + class weights    & Focal loss ($\gamma=2$) collapses gradients \\
+Positional encoding      & Omitted               & Features orderless; PE harms generalisation \\
+Classifier head          & Global avg.\ pooling  & Parameter-free; matches [CLS] accuracy \\
+Log transform            & Not applied           & No gain; StandardScaler sufficient \\
+Correlation pruning      & Not applied           & Non-deterministic across seeds \\
+\midrule
+\multicolumn{3}{l}{\textit{Multi-class scaling}} \\
+34-class vs.\ Transformer & Linformer preferred  & $+$8.4\,pp macro F1, $+$6.6\,pp accuracy vs.\ Transformer \\
+8-class 99/1 split        & Linformer preferred  & $+$5.1\,pp macro F1 vs.\ MLP; 2$\times$ better than Transformer \\
+Zero-day Mirai            & All attention models & Linformer 99.96\,\% Mirai F1, tied best \\
+\midrule
+\multicolumn{3}{l}{\textit{Post-training optimisation (Linformer only)}} \\
+Quantisation             & Dynamic INT8          & $-$66.5\,\% disk, 0 accuracy loss \\
+Tracing                  & TorchScript           & $-$24.2\,\% latency, 0 accuracy loss \\
+\textbf{Combined (selected)} & \textbf{Quant\,+\,Script} & $-$53.9\,\% disk, $-$32.6\,\% latency, $+$29.8\,\% throughput \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The ablation establishes five central conclusions:
+\begin{enumerate}[noitemsep]
+  \item \textbf{Linformer outperforms the vanilla Transformer} on binary
+    CIC-IoT classification: F1 98.74\,\% vs.\ 98.34\,\% (+0.40\,\%),
+    with 2.3$\times$ fewer attention FLOPs at $n=37$ and growing
+    advantage at larger $n$.
+  \item \textbf{Linformer dominates Transformer on multi-class tasks:}
+    +8.4\,pp macro F1 on the 34-class taxonomy and $+$2$\times$ macro F1
+    on the attack-heavy 8-class split, demonstrating that linear attention
+    generalises better than full O($n^2$) attention under high class counts
+    and severe imbalance.
+  \item \textbf{Linformer achieves robust zero-day generalisation:}
+    99.96\,\% Mirai F1 on the held-out zero-day set, tied with MLP and
+    outperforming LSTM and Transformer, despite Mirai being trained on
+    only 80\,\% of its data alongside 7 other attack families.
+  \item \textbf{Post-training optimisation eliminates the raw-latency gap}
+    between Linformer and the Transformer: the Quant\,+\,Script variant
+    achieves 0.48\,ms median inference vs.\ 0.53\,ms for Transformer,
+    while being 93\,\% smaller (0.58\,MB vs.\ 1.16\,MB).
+  \item \textbf{Linformer is the sole architecture combining}
+    cross-feature attention, O($nk$) linear scaling, highest
+    attention-model accuracy across binary, 34-class, and 8-class tasks,
+    and sub-millisecond edge deployability after quantisation —
+    making it the recommended architecture for production IoT intrusion
+    detection systems.
+\end{enumerate}

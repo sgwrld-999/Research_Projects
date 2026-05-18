@@ -1,0 +1,33 @@
+ablation_name: "multiclass_comparison"
+description: "Compare MLP, CNN, LSTM, Transformer, Linformer on CIC-IoT 34-class classification"
+dataset: "ciciot"
+base_profile: "first"
+task: "multiclass"
+
+training_overrides:
+  epochs: 80
+  early_stopping_patience: 8
+  batch_size: 128
+  learning_rate: 0.0005
+
+experiments:
+  - name: "multiclass_comparison"
+    description: "MLP vs CNN vs LSTM vs Transformer vs Linformer — 34-class CIC-IoT"
+    model_types:
+      - type: "mlp"
+      - type: "cnn"
+      - type: "lstm"
+      - type: "transformer"
+      - type: "linformer"
+    reasoning_before:
+      - "MLP: independent feature processing — expected to struggle with fine-grained 34-class separation"
+      - "CNN: local feature interactions — should outperform MLP on correlated flow features"
+      - "LSTM: sequential feature modeling — captures ordering patterns among features"
+      - "Transformer: full O(n^2) attention — rich inter-feature context for class discrimination"
+      - "Linformer: O(nk) attention — expected to match Transformer at lower complexity"
+    reasoning_after:
+      - "Multi-class F1 (macro) is the key metric — rare classes like UPLOADING_ATTACK penalize models heavily"
+      - "MLP expected 40-65% macro-F1 — limited by inability to model feature interactions"
+      - "CNN/LSTM expected 65-80% — local/sequential patterns help distinguish attack sub-types"
+      - "Transformer/Linformer expected 80-92% — full attention resolves fine-grained class boundaries"
+      - "Compare efficiency (params, latency, FLOPs) alongside accuracy to validate Linformer thesis"

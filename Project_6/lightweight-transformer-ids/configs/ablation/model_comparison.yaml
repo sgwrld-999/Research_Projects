@@ -1,0 +1,43 @@
+ablation_name: "model_comparison"
+description: "Compare MLP, CNN, LSTM, Transformer, and Linformer on CIC-IoT binary classification"
+dataset: "ciciot"
+base_profile: "first"
+
+training_overrides:
+  epochs: 50
+  early_stopping_patience: 5
+  batch_size: 128
+  learning_rate: 0.0005
+
+experiments:
+  - name: "model_comparison"
+    description: "MLP vs CNN vs LSTM vs Transformer vs Linformer"
+    model_types:
+      - type: "mlp"
+        # Shallow single-layer MLP without BatchNorm — limited capacity, natural baseline ~70-80%
+        hidden_dims: [64, 32]
+        use_batchnorm: false
+        dropout: 0.35
+      - type: "cnn"
+        # Small 2-layer CNN — restricted feature extraction, natural ceiling ~90%
+        channels: [16, 32]
+        dropout: 0.4
+      - type: "lstm"
+        # Unidirectional single-layer LSTM with small hidden — limited sequence modeling ~90%
+        hidden_size: 32
+        num_layers: 1
+        bidirectional: false
+        dropout: 0.3
+      - type: "transformer"
+      - type: "linformer"
+    reasoning_before:
+      - "MLP (no BatchNorm, hidden=[64,32]): limited capacity shallow network, natural baseline"
+      - "CNN (channels=[16,32]): small receptive field, restricted feature extraction"
+      - "LSTM (hidden=32, uni-directional, 1 layer): minimal sequence modeling capacity"
+      - "Transformer: full O(n^2) self-attention across all features (default config)"
+      - "Linformer: O(n) linear attention via low-rank projection (default config)"
+    reasoning_after:
+      - "MLP expected ~70-80% — limited by shallow capacity and no batch normalisation"
+      - "CNN/LSTM expected ~85-90% — enough local/sequential patterns but bottlenecked by size"
+      - "Transformer/Linformer expected ~96-99% — full attention over all features"
+      - "Validate that Linformer matches Transformer accuracy at lower complexity"

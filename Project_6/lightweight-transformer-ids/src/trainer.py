@@ -14,8 +14,9 @@ Example:
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
-from typing import Optional, Tuple, TYPE_CHECKING
+from typing import Dict, List, Optional, Tuple, TYPE_CHECKING
 
 import numpy as np
 import torch
@@ -263,9 +264,14 @@ class Trainer:
         self.gradient_clip_val = config.training.gradient_clip_val
 
         self.best_val_score = 0.0
-        self.train_losses = []
-        self.val_losses = []
-        self.val_accuracies = []
+        self.train_losses: List[float] = []
+        self.val_losses: List[float] = []
+        self.val_accuracies: List[float] = []
+
+        # Training efficiency tracking
+        self.epoch_times: List[float] = []      # seconds per epoch
+        self.total_training_time: float = 0.0
+        self.convergence_epoch: int = 0         # epoch where best val score was last improved
 
     def train_epoch(self) -> float:
         """Train the model for one epoch.
@@ -410,10 +416,14 @@ class Trainer:
         if self.val_loader is not None:
             logger.info(f"Validation samples: {len(self.val_loader.dataset)}")
 
+        _train_start = time.perf_counter()
+
         for epoch in range(1, self.epochs + 1):
             logger.info(f"\n{'='*60}")
             logger.info(f"Epoch {epoch}/{self.epochs}")
             logger.info(f"{'='*60}")
+
+            _epoch_start = time.perf_counter()
 
             # Training phase (step 8-9)
             train_loss = self.train_epoch()
@@ -432,6 +442,7 @@ class Trainer:
                 # Save best model checkpoint
                 if val_acc > self.best_val_score:
                     self.best_val_score = val_acc
+                    self.convergence_epoch = epoch
                     self.save_checkpoint(epoch, val_acc)
                     logger.info(f"★ New best validation accuracy: {val_acc:.4f}")
 
@@ -439,14 +450,22 @@ class Trainer:
                 if self.early_stopping is not None:
                     if self.early_stopping(val_acc):
                         logger.info(f"Early stopping at epoch {epoch}")
+                        self.epoch_times.append(time.perf_counter() - _epoch_start)
                         break
             else:
                 # No validation set, save model every epoch
                 self.save_checkpoint(epoch, train_loss)
 
+            self.epoch_times.append(time.perf_counter() - _epoch_start)
+
+        self.total_training_time = time.perf_counter() - _train_start
+
         logger.info("\n" + "="*60)
         logger.info("Training completed!")
         logger.info(f"Best validation accuracy: {self.best_val_score:.4f}")
+        logger.info(f"Convergence epoch: {self.convergence_epoch}")
+        logger.info(f"Total training time: {self.total_training_time:.2f}s")
+        logger.info(f"Avg epoch time: {sum(self.epoch_times)/len(self.epoch_times):.2f}s")
         logger.info(f"Best model saved at: {self.model_save_path}")
         logger.info("="*60)
 

@@ -1,0 +1,22 @@
+# Quick test ablation (small scale for testing)
+ablation_name: "test_k_quick"
+description: "Quick test of k sweep with minimal epochs"
+dataset: "ciciot"
+base_profile: "first"
+
+# Override training epochs for faster testing
+training_overrides:
+  epochs: 2
+  early_stopping_patience: 2
+
+experiments:
+  - name: "k_test"
+    description: "Test k values with fast training"
+    variables:
+      k: [8, 16]
+    reasoning_before:
+      - "Testing ablation pipeline works correctly"
+      - "Using minimal epochs for quick validation"
+    reasoning_after:
+      - "Verify results are saved correctly"
+      - "Check output structure"

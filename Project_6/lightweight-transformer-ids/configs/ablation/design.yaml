@@ -1,0 +1,100 @@
+# Ablation Study: Design Choices
+# Studies the effect of design decisions on model performance and efficiency
+# Variables: preprocessing strategies, positional encoding, loss functions
+
+ablation_name: "design_ablation"
+description: "Ablation study on design choices and preprocessing strategies"
+dataset: "ciciot"
+
+# Base configuration to extend
+base_profile: "first"
+
+experiments:
+  # Study 1: Positional Encoding
+  - name: "positional_encoding"
+    description: "Effect of positional encoding on sequence understanding"
+    variables_boolean:
+      enable_positional_encoding: [true, false]
+    reasoning_before:
+      - "Positional encoding provides sequence order information"
+      - "Tabular data (CIC-IoT) may or may not benefit from position information"
+      - "In IDS, feature order may not be semantically important"
+      - "Testing if position-invariant attention is sufficient"
+    reasoning_after:
+      - "Measure impact on accuracy and F1-score"
+      - "Assess if position information helps distinguish attacks"
+      - "Implications for feature importance"
+
+  # Study 2: Loss Function Selection
+  - name: "loss_function"
+    description: "Effect of loss function choice on class-imbalanced CIC-IoT data"
+    variables_options:
+      use_focal_loss: [true, false]
+    reasoning_before:
+      - "CIC-IoT has significant class imbalance (more benign traffic)"
+      - "Focal Loss down-weights easy examples, focuses on hard negatives"
+      - "Standard CrossEntropy vs. Focal Loss for imbalanced data"
+      - "Testing if specialized loss improves minority class detection"
+    reasoning_after:
+      - "Compare precision, recall, F1 for both classes"
+      - "Measure improvement in attack detection (recall)"
+      - "Assess cost in precision/false positives"
+
+  # Study 3: Focal Loss Hyperparameters
+  - name: "focal_loss_hyperparameters"
+    description: "Tune Focal Loss alpha and gamma for optimal performance"
+    conditions:
+      - use_focal_loss: true
+    variables:
+      focal_loss_alpha: [0.1, 0.25, 0.5, 0.75]
+      focal_loss_gamma: [1.0, 2.0, 3.0, 4.0]
+    reasoning_before:
+      - "Alpha balances positive vs. negative class weighting"
+      - "Gamma controls focusing on hard examples (higher = stronger focus)"
+      - "Optimal values may depend on CIC-IoT class distribution"
+      - "Tuning these parameters for attack class importance"
+    reasoning_after:
+      - "Identify optimal alpha/gamma combination"
+      - "Assess sensitivity to these hyperparameters"
+
+  # Study 4: Feature Preprocessing Strategy
+  - name: "preprocessing_strategy"
+    description: "Effect of log transformation and correlation pruning"
+    variables_boolean:
+      enable_log_transform: [true, false]
+      enable_correlation_pruning: [true, false]
+    reasoning_before:
+      - "Log transformation normalizes feature distributions"
+      - "Correlation pruning removes redundant features"
+      - "CIC-IoT features have varying scales and correlations"
+      - "Testing if these preprocessing choices improve learning"
+    reasoning_after:
+      - "Compare feature retention and model performance"
+      - "Measure feature space coverage and diversity"
+
+  # Study 5: Embedding Strategy
+  - name: "embedding_strategy"
+    description: "Effect of different embedding initialization strategies"
+    variables_options:
+      embedding_init: ["normal", "uniform", "xavier_normal", "xavier_uniform"]
+    reasoning_before:
+      - "Embedding initialization affects convergence and final performance"
+      - "Different initializations may suit different architectures"
+      - "Testing if specialized initialization improves training stability"
+    reasoning_after:
+      - "Compare convergence speed and final metrics"
+      - "Identify best initialization strategy for CIC-IoT"
+
+  # Study 6: Attention Temperature
+  - name: "attention_temperature"
+    description: "Effect of softmax temperature in attention mechanism"
+    variables:
+      attention_temperature: [0.5, 1.0, 2.0, 4.0]
+    reasoning_before:
+      - "Temperature scales attention weights before softmax"
+      - "Lower temperature sharpens attention (more focused)"
+      - "Higher temperature softens attention (more distributed)"
+      - "Testing optimal focus level for IDS feature importance"
+    reasoning_after:
+      - "Measure attention concentration and accuracy"
+      - "Assess if model learns appropriate focus patterns"

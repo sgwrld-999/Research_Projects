@@ -1,0 +1,83 @@
+# Ablation Study: Architectural Components
+# Studies the effect of different architecture components on performance
+# Variables: Linformer k, depth, embedding dimension, attention heads
+
+ablation_name: "architecture_ablation"
+description: "Ablation study on core Linformer architectural components"
+dataset: "ciciot"
+
+# Base configuration to extend
+base_profile: "first"
+
+experiments:
+  # Study 1: Linformer projection dimension (k)
+  - name: "linformer_k_sweep"
+    description: "Effect of Linformer projection dimension k on accuracy and efficiency"
+    variables:
+      k: [4, 8, 16, 32, 64]
+    reasoning_before:
+      - "Higher k values increase model capacity but reduce computational efficiency"
+      - "Lower k values (k=4, 8) test the limits of linear complexity benefits"
+      - "k must be <= seq_len (78 features in CIC-IoT)"
+      - "Examining the accuracy-efficiency tradeoff across k values"
+    reasoning_after:
+      - "Compare accuracy, F1, latency, and memory across k values"
+      - "Identify optimal k that balances performance and efficiency"
+
+  # Study 2: Model depth (number of transformer layers)
+  - name: "depth_sweep"
+    description: "Effect of model depth (number of Linformer encoder layers)"
+    variables:
+      depth: [2, 4, 6, 8, 10]
+    reasoning_before:
+      - "Deeper models can learn more complex patterns but risk overfitting"
+      - "Depth directly affects latency and memory consumption"
+      - "CIC-IoT attacks may require different depths for optimal detection"
+      - "Testing if deeper models improve attack detection without overfitting"
+    reasoning_after:
+      - "Analyze accuracy plateau or degradation with depth"
+      - "Correlate depth with inference latency and memory"
+
+  # Study 3: Embedding dimension
+  - name: "embedding_dim_sweep"
+    description: "Effect of embedding dimension on model capacity and efficiency"
+    variables:
+      dim: [32, 64, 128, 256]
+    reasoning_before:
+      - "Embedding dimension affects feature representation capacity"
+      - "Higher dimensions increase model size and computation"
+      - "Must ensure dim is divisible by heads (4)"
+      - "Testing representation capacity needed for CIC-IoT features"
+    reasoning_after:
+      - "Measure accuracy improvement vs. computational cost"
+      - "Identify diminishing returns in higher dimensions"
+
+  # Study 4: Number of attention heads
+  - name: "heads_sweep"
+    description: "Effect of multi-head attention on performance"
+    variables:
+      heads: [2, 4, 8, 16]
+    reasoning_before:
+      - "More heads allow attending to different feature subspaces"
+      - "Must ensure dim is divisible by heads"
+      - "More heads increase computation but improve expressivity"
+      - "Testing if CIC-IoT benefits from richer attention patterns"
+    reasoning_after:
+      - "Compare attention diversity and attack detection precision"
+      - "Measure diminishing returns in head count"
+
+  # Study 5: Combined architecture variations
+  - name: "architecture_combinations"
+    description: "Test promising combinations from individual ablations"
+    variables_grid:
+      - depth: [4, 6]
+        k: [8, 16]
+        dim: [64, 128]
+        heads: [4, 8]
+    reasoning_before:
+      - "Individual components may interact in unexpected ways"
+      - "Testing selected high-performing combinations"
+      - "Identifying potential synergies between components"
+    reasoning_after:
+      - "Confirm interaction effects between components"
+      - "Select final architecture configuration"

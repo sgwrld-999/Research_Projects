@@ -1,0 +1,129 @@
+# Ablation Study: Efficiency and Deployment
+# Studies model efficiency metrics across architectures and settings
+# Variables: model size, latency, memory, throughput
+
+ablation_name: "efficiency_ablation"
+description: "Benchmark efficiency metrics across different model configurations"
+dataset: "ciciot"
+
+# Base configuration to extend
+base_profile: "first"
+
+efficiency_benchmarks:
+  # Benchmark 1: Architecture comparison
+  - name: "architecture_comparison"
+    description: "Compare Linformer vs standard Transformer on efficiency"
+    models:
+      - name: "linformer_k8"
+        config_overrides:
+          model.k: 8
+      - name: "linformer_k16"
+        config_overrides:
+          model.k: 16
+      - name: "linformer_k32"
+        config_overrides:
+          model.k: 32
+      - name: "transformer"
+        model_type: "transformer"  # Standard Transformer for comparison
+        config_overrides:
+          model.dim: 64
+          model.depth: 4
+          model.heads: 4
+    metrics:
+      - param_count
+      - flops
+      - latency_ms
+      - peak_memory_mb
+      - throughput_samples_per_sec
+    reasoning_before:
+      - "Linformer should achieve O(n) vs Transformer's O(n²) complexity"
+      - "Need to quantify actual efficiency gains on CIC-IoT"
+      - "Latency critical for real-time IDS deployment"
+      - "Memory constraints on edge devices (Raspberry Pi)"
+    reasoning_after:
+      - "Validate O(n) complexity advantage in practice"
+      - "Identify deployment viability on edge devices"
+      - "Calculate efficiency/accuracy Pareto frontier"
+
+  # Benchmark 2: Scale analysis
+  - name: "scale_analysis"
+    description: "Measure efficiency as model size increases"
+    variable_scales:
+      - scale_factor: 0.5  # Smaller models
+        config_overrides:
+          model.dim: 32
+          model.depth: 2
+          model.heads: 2
+      - scale_factor: 1.0  # Base model
+        config_overrides:
+          model.dim: 64
+          model.depth: 4
+          model.heads: 4
+      - scale_factor: 2.0  # Larger models
+        config_overrides:
+          model.dim: 128
+          model.depth: 8
+          model.heads: 8
+    metrics:
+      - param_count
+      - latency_regression
+      - memory_regression
+      - throughput_trend
+    reasoning_before:
+      - "Understanding scaling behavior is critical for deployment decisions"
+      - "Need to predict performance of scaled models before training"
+      - "Identifying sweet spot for resource-constrained environments"
+    reasoning_after:
+      - "Fit polynomial model for latency/memory scaling"
+      - "Predict maximum model size for target devices"
+
+  # Benchmark 3: Batch size sensitivity
+  - name: "batch_size_sensitivity"
+    description: "Measure efficiency variation with batch size"
+    batch_sizes: [1, 4, 8, 16, 32, 64, 128]
+    metrics:
+      - latency_per_sample
+      - memory_per_sample
+      - throughput
+    reasoning_before:
+      - "Batch size affects latency and throughput differently"
+      - "Edge devices may have strict memory constraints"
+      - "Real-time IDS may require low-latency single-sample inference"
+      - "Testing if batching is necessary for efficiency"
+    reasoning_after:
+      - "Identify minimum viable batch size"
+      - "Recommend batch size for deployment scenarios"
+
+  # Benchmark 4: Device comparison
+  - name: "device_comparison"
+    description: "Compare efficiency across different hardware"
+    devices:
+      - "cpu"
+      - "cuda"  # GPU if available
+    reasoning_before:
+      - "IDS deployment spans from servers (GPU) to edge (CPU)"
+      - "Need to understand deployment tradeoffs"
+      - "CPU efficiency critical for Raspberry Pi deployments"
+    reasoning_after:
+      - "Quantify speedup from GPU acceleration"
+      - "Recommend deployment targets for different hardware"
+
+  # Benchmark 5: Quantization readiness
+  - name: "quantization_analysis"
+    description: "Analyze model properties relevant for quantization"
+    metrics:
+      - weight_distribution
+      - activation_ranges
+      - gradient_magnitude_distribution
+      - quantization_friendly_ops_ratio
+    reasoning_before:
+      - "Quantization (int8) could significantly reduce model size and latency"
+      - "Need to understand if CIC-IoT models are amenable to quantization"
+      - "Critical for deployment on embedded devices"
+    reasoning_after:
+      - "Estimate potential speedup from quantization"
+      - "Identify potential accuracy loss from quantization"
+
+input_size: 78  # CIC-IoT feature count
+seq_len: 78     # For Linformer, K and V projection dimension
+num_classes: 2  # Binary classification

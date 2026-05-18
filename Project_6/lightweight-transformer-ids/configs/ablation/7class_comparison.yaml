@@ -1,0 +1,53 @@
+ablation_name: "7class_comparison"
+description: "MLP, CNN, LSTM, Transformer, Linformer on 7-class CIC-IoT attack classification"
+task: "7class"
+base_profile: "first"
+
+# Training sources — merged in memory, raw files never modified
+training_sources:
+  - ciciot_training_50_50.csv      # DDoS, DoS, Spoofing, Recon, Web-based, Brute Force
+  - zero_day_test.csv              # Mirai (80% train / 20% holdout test)
+zero_day_train_split: 0.8          # fraction of zero_day used for training
+
+# Test sources
+test_sources:
+  - ciciot_test_5_95.csv           # 5% attack, 95% benign
+  - ciciot_test_1_99.csv           # 1% attack, 99% benign
+  - ciciot_test_99_1.csv           # 99% attack — sampled to test_99_1_sample_n rows
+test_99_1_sample_n: 100000         # cap on ciciot_test_99_1 rows to evaluate
+
+training_overrides:
+  epochs: 80
+  early_stopping_patience: 10
+  batch_size: 256
+  learning_rate: 0.0005
+  oversample_target: 2000          # oversample minority classes in memory
+
+experiments:
+  - name: "7class_comparison"
+    description: "MLP vs CNN vs LSTM vs Transformer vs Linformer — 7-class attack classification"
+    model_types:
+      - type: "mlp"
+        hidden_dims: [64, 32]
+        use_batchnorm: false
+        dropout: 0.35
+      - type: "cnn"
+        channels: [16, 32]
+        dropout: 0.4
+      - type: "lstm"
+        hidden_size: 32
+        num_layers: 1
+        bidirectional: false
+        dropout: 0.3
+      - type: "transformer"
+      - type: "linformer"
+    reasoning_before:
+      - "7-class attack classifier: DDoS, DoS, Spoofing, Recon, Web-based, Brute Force, Mirai"
+      - "MLP: shallow capacity — expected to struggle on fine-grained attack boundaries"
+      - "CNN/LSTM: local/sequential patterns — moderate performance expected"
+      - "Transformer: full O(n²) attention across 37 features"
+      - "Linformer: O(nk) linear attention — expected to match Transformer at lower compute"
+    reasoning_after:
+      - "Macro F1 is key metric — penalises models that fail on minority attack classes"
+      - "Mirai vs DDoS separation tests robustness of attention-based models"
+      - "Compare efficiency (latency, disk, params) alongside accuracy for deployment assessment"
