@@ -1,54 +1,91 @@
-# Lightweight Transformer Intrusion Detection System (Linformer‑IDS)
+# Lightweight Transformer Intrusion Detection System (Linformer-IDS)
 
 ## Overview
 
-This repository provides a full implementation of an **Intrusion Detection System (IDS)** based on a lightweight Transformer architecture.  Traditional Transformer models achieve high detection accuracy but suffer from quadratic time and memory complexity with respect to sequence length.  The **Linformer** architecture approximates the attention matrix with low‑rank projections, reducing the complexity from \(O(n^2)\) to **\(O(n)\)**【8750594039919†L11-L18】【8750594039919†L117-L133】.  By adopting Linformer layers within a classification pipeline, this project delivers efficient and scalable network intrusion detection suitable for edge devices while maintaining high accuracy.
+This repository provides a full implementation of an **Intrusion Detection System (IDS)** supporting multiple architectures for comprehensive model comparison and ablation studies. The project includes:
 
-Two benchmark datasets are supported: **NSL‑KDD** and **UNSW‑NB15**.  The NSL‑KDD dataset comprises roughly 250 000 samples with 44 features and includes normal, DoS, R2L, probe and U2R attack classes【971553572116090†L401-L405】.  The UNSW‑NB15 dataset contains about 257 673 samples with 42 features, covering attacks such as DoS, exploits, reconnaissance, analysis, worms, backdoors and fuzzers【971553572116090†L401-L405】.  Both binary (normal vs. attack) and multi‑class classification tasks are supported.
+- **Linformer**: Lightweight Transformer using low-rank projections to reduce complexity from O(n²) to O(n)
+- **Transformer (Full)**: Standard transformer with O(n²) full attention for comparison baseline
+- **LSTM**: Bidirectional LSTM treating features as time sequences
+- **CNN**: 1D convolutional architecture with adaptive pooling
+- **MLP**: Multi-layer perceptron baseline for feature-wise processing
 
-The project adheres to rigorous software‑engineering practices (SOLID principles, modular design and comprehensive documentation) and includes unit tests, configuration management and reproducible training scripts.
+The Linformer architecture approximates the attention matrix with low-rank projections, significantly reducing computational and memory requirements. By supporting multiple architectures, this project enables systematic evaluation and ablation studies for efficient and scalable network intrusion detection suitable for edge devices.
 
-## Repository structure
+**Supported Datasets:**
+- **NSL-KDD**: ~250,000 samples with 44 features (normal, DoS, R2L, probe, U2R attacks)
+- **UNSW-NB15**: ~257,673 samples with 42 features (DoS, exploits, reconnaissance, analysis, worms, backdoors, fuzzers)
+- **CIC-IoT**: IoT-specific attack dataset
+- **Edge-IIoT**: Industrial IoT attack dataset
+
+Both binary (normal vs. attack) and multi-class classification tasks are supported.
+
+The project includes:
+- ✓ Modular architecture with SOLID principles
+- ✓ Configuration-driven training and preprocessing
+- ✓ **Comprehensive ablation study system** for architectural evaluation
+- ✓ Multiple baseline models for comparison
+- ✓ Training efficiency tracking (epoch times, convergence metrics)
+- ✓ Extensive evaluation metrics (accuracy, precision, recall, F1, confusion matrix, ROC curves)
+- ✓ Reproducible training scripts
+
+## Repository Structure
 
 ```
-lightweight-transformer-ids/
+Project_6/
+├── lightweight-transformer-ids/
+│   ├── src/
+│   │   ├── __init__.py
+│   │   ├── config.py              # Configuration definitions
+│   │   ├── config_manager.py      # YAML-based configuration management
+│   │   ├── data_loader.py         # Data loading and preprocessing
+│   │   ├── model.py               # Model implementations (Linformer, Transformer, LSTM, CNN, MLP)
+│   │   ├── trainer.py             # Training loop with early stopping, checkpointing
+│   │   ├── evaluator.py           # Evaluation metrics and visualizations
+│   │   ├── logger.py              # Logging setup
+│   │   └── utils.py               # Utility functions
+│   │
+│   ├── pipeline/
+│   │   ├── benchmark.py           # Efficiency benchmarking utilities
+│   │   └── pipeline.py            # Data preprocessing pipeline
+│   │
+│   ├── configs/
+│   │   ├── config.yaml            # Main configuration with profiles
+│   │   └── ablation/              # Ablation study configurations
+│   │       ├── architecture.yaml   # Architecture ablation settings
+│   │       ├── design.yaml         # Design ablation settings
+│   │       └── efficiency.yaml     # Efficiency ablation settings
+│   │
+│   ├── data/
+│   │   └── raw/                   # Raw dataset files (not committed)
+│   │
+│   ├── models/                    # Saved model checkpoints
+│   ├── results/                   # Training results and visualizations
+│   ├── logs/                      # Training logs
+│   │
+│   ├── main_ciciot.py            # Main entry point for CIC-IoT training
+│   ├── test_all_datasets_binary_ciciot.py        # Comprehensive CIC-IoT testing
+│   └── test_all_datasets_binary_edge_iiot.py     # Comprehensive Edge-IIoT testing
 │
-├── data/
-│   └── raw/                  # Place raw dataset files here (not committed)
-│
-├── notebooks/
-│   └── 01_data_exploration.ipynb  # Example exploratory notebook (optional)
-│
-├── results/                 # Generated models and evaluation plots
-│
-├── src/
-│   ├── __init__.py
-│   ├── config.py            # Central configuration definitions
-│   ├── data_loader.py       # Data loading and preprocessing
-│   ├── model.py             # Linformer model implementation
-│   ├── train.py             # Main training/evaluation script
-│   └── utils.py             # Metrics, plotting and helper functions
-│
-├── tests/
-│   └── test_data_loader.py  # Unit tests for data loading
-│
-├── .gitignore
-├── requirements.txt         # Project dependencies
-└── README.md                # This documentation
+├── run_ablation_studies.sh        # Bash script to run ablation studies
+├── train_7class_chunked.py        # Multi-class training script
+├── CLAUDE.md                      # Developer guide
+├── ABLATION_README.md             # Ablation study documentation
+└── README.md                      # This file
 ```
 
 ## Installation
 
-1. **Clone the repository** and change into its directory:
+1. **Clone the repository**:
    ```bash
    git clone <repo-url>
-   cd lightweight-transformer-ids
+   cd Project_6/lightweight-transformer-ids
    ```
 
-2. **Create a Python virtual environment** (optional but recommended):
+2. **Create a Python virtual environment** (recommended):
    ```bash
    python3 -m venv venv
-   source venv/bin/activate
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
 3. **Install dependencies**:
@@ -56,53 +93,260 @@ lightweight-transformer-ids/
    pip install -r requirements.txt
    ```
 
-## Preparing datasets
+4. **Verify GPU availability** (optional):
+   ```bash
+   python tests/verify_gpu.py
+   ```
 
-Download the NSL‑KDD and UNSW‑NB15 datasets from their official sources and place them in the `data/raw/` directory.  The repository does not include the datasets due to licensing.  The loader expects CSV files with the label column named `label`.  If necessary, adjust the column name in `src/data_loader.py`.
+## Preparing Datasets
 
-For example:
+Download datasets from their official sources and place CSV files in `data/raw/`:
 
 ```
 data/raw/nsl_kdd.csv
 data/raw/unsw_nb15.csv
+data/raw/ciciot_2023/ciciot_training_50_50.csv
+data/raw/edge_iiot_training.csv
 ```
+
+The data loader expects:
+- CSV format with features as columns
+- A `label` column (or configure in preprocessing_config.yaml)
+- No missing values (or handle during preprocessing)
 
 ## Usage
 
-Training and evaluating the model is done via the `train.py` script.  The script accepts command‑line arguments to specify the dataset and task type.
+### Basic Training
 
-### Train on NSL‑KDD for binary classification
-
+Train on NSL-KDD with default configuration:
 ```bash
-python src/train.py --dataset nsl_kdd --task binary \
-    --train-file data/raw/nsl_kdd.csv \
-    --epochs 20 --batch-size 64 --learning-rate 1e-3
+python main_ciciot.py --mode train --config-profile default \
+    --input-file data/raw/nsl_kdd.csv
 ```
 
-### Train on UNSW‑NB15 for multi‑class classification
-
+Train with custom hyperparameters:
 ```bash
-python src/train.py --dataset unsw_nb15 --task multi \
-    --train-file data/raw/unsw_nb15.csv \
-    --epochs 20 --batch-size 64 --learning-rate 1e-3
+python main_ciciot.py --mode train --config-profile default \
+    --input-file data/raw/ciciot.csv \
+    --epochs 50 --batch-size 32 --learning-rate 1e-3
 ```
 
-During training the script will output progress, calculate validation metrics and save the best model checkpoint to the `results/` directory.  After training it will generate and save a confusion matrix and ROC curves for the test set.
-
-Run `python src/train.py --help` for a full list of configurable options.
-
-## Tests
-
-Unit tests are located in the `tests/` directory.  To run the test suite, simply execute:
-
+Train with specific model type:
 ```bash
-pytest
+python main_ciciot.py --mode train --config-profile default \
+    --input-file data/raw/ciciot.csv \
+    --model-type linformer  # or: transformer, lstm, cnn, mlp
 ```
 
-## Extending the project
+View all available options:
+```bash
+python main_ciciot.py --help
+```
 
-The modular architecture allows easy extension.  To add a new dataset, implement a loader function in `data_loader.py` and update the configuration.  To swap out the model architecture, create a new module in `src/model.py` that follows the same interface.  The training script relies on abstractions and should not need to change when new models or datasets are introduced.
+### Model Selection
+
+The project supports multiple models for comparison:
+
+- **linformer**: Default lightweight transformer with O(n) complexity
+- **transformer**: Full attention transformer (O(n²)) for baseline comparison
+- **lstm**: Bidirectional LSTM processing features as sequences
+- **cnn**: 1D CNN with convolutional blocks
+- **mlp**: Multi-layer perceptron for simple baseline
+
+### Ablation Studies
+
+Run comprehensive ablation studies to evaluate architectural components:
+
+```bash
+# Run all ablation studies (architecture, design, efficiency)
+./run_ablation_studies.sh
+
+# Run specific ablation type on GPU
+./run_ablation_studies.sh architecture cuda
+
+# Run quick test ablation (minimal epochs)
+./run_ablation_studies.sh test cpu
+
+# Show help
+./run_ablation_studies.sh --help
+```
+
+**Ablation Study Types:**
+
+1. **Architecture Ablation** - Evaluates core model parameters:
+   - Linformer projection dimension (k)
+   - Model depth (number of layers)
+   - Embedding dimension
+   - Attention heads
+   - Interaction effects and combinations
+
+2. **Design Ablation** - Evaluates design choices:
+   - Positional encoding (on/off)
+   - Loss functions (CrossEntropy vs. Focal Loss)
+   - Focal Loss hyperparameters
+   - Preprocessing strategies
+   - Embedding initialization
+   - Attention temperature
+
+3. **Efficiency Ablation** - Evaluates computational efficiency:
+   - Architecture comparison (Linformer vs. Transformer)
+   - Model scaling (Small, Base, Large)
+   - Batch size sensitivity
+   - Device performance (CPU vs. GPU)
+   - Quantization readiness
+
+Results are automatically organized by study type with timestamps:
+```
+results/ciciot_binary_classification/
+├── architecture_ablation/2026-05-03_14-32-10/
+│   ├── results.csv
+│   ├── results.json
+│   └── summary.json
+├── design_ablation/...
+└── efficiency_ablation/...
+```
+
+### Testing and Evaluation
+
+Comprehensive test suites:
+```bash
+# Test on CIC-IoT
+python test_all_datasets_binary_ciciot.py
+
+# Test on Edge-IIoT
+python test_all_datasets_binary_edge_iiot.py
+```
+
+## Configuration System
+
+Configurations are YAML-based with profile support. Each profile defines:
+
+- **Model Config**: dim (embedding), depth (layers), heads, k (projection dim), dropout
+- **Training Config**: epochs, batch_size, learning_rate, weight_decay, gradient_clip
+- **Preprocessing Config**: encoding, scaling, feature selection methods
+
+Load configuration in code:
+```python
+from src.config_manager import ConfigManager
+
+config = ConfigManager.load_config("configs/config.yaml", profile="default")
+model_dim = config.model.dim
+batch_size = config.training.batch_size
+```
+
+## Training Efficiency Tracking
+
+The trainer automatically tracks:
+- **Epoch times**: Execution time per epoch (seconds)
+- **Convergence epoch**: When the best validation score was achieved
+- **Total training time**: Complete training duration
+- **Average epoch time**: Mean time per epoch
+
+These metrics are logged at the end of training and help identify:
+- Model computational efficiency
+- Training convergence speed
+- Resource utilization patterns
+
+Example logging output:
+```
+Best validation accuracy: 0.9876
+Convergence epoch: 15
+Total training time: 450.25s
+Avg epoch time: 22.51s
+```
+
+## Project Structure and Modularity
+
+### Core Models (src/model.py)
+
+All models follow a consistent interface:
+
+```python
+class ModelName(nn.Module):
+    def __init__(self, input_seq_len: int, num_classes: int, **config):
+        # Initialize model
+    
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # Forward pass
+    
+    def count_parameters(self) -> int:
+        # Return trainable parameter count
+```
+
+### ModelFactory for Dynamic Creation
+
+Create models dynamically from configuration:
+
+```python
+from src.model import ModelFactory
+
+model = ModelFactory.create(
+    input_seq_len=42,
+    num_classes=2,
+    model_config=config.model,
+    model_type="linformer"  # or: transformer, lstm, cnn, mlp
+)
+```
+
+## Extending the Project
+
+The modular architecture allows easy extension:
+
+**Add a new dataset:**
+- Implement a loader function in `src/data_loader.py`
+- Update configuration in `configs/config.yaml`
+- No changes needed to training pipeline
+
+**Add a new model:**
+- Create model class in `src/model.py` following the standard interface
+- Add initialization logic to `ModelFactory.create()`
+- Update ablation configs as needed
+- Trainer works without modification
+
+**Add a new ablation study:**
+- Create config file in `configs/ablation/`
+- Define parameter sweeps and combinations
+- Update `src/run_ablation.py` to recognize new study type
+
+## Code Quality
+
+Type checking and linting:
+```bash
+mypy src/
+flake8 src/ --max-line-length=100
+black src/ --line-length=100
+```
+
+## Documentation
+
+- `CLAUDE.md` - Comprehensive developer guide
+- `ABLATION_README.md` - Ablation study system documentation
+- `lightweight-transformer-ids/ABLATION_STUDY_GUIDE.md` - Detailed ablation examples
+- `lightweight-transformer-ids/ANALYSIS_TEMPLATE.md` - Template for documenting results
+- `docs/` - Algorithm specifications and methodology
+
+## Key Features
+
+✓ **Multiple Models**: Compare Linformer, Transformer, LSTM, CNN, and MLP baselines
+✓ **Automated Ablation Studies**: Systematically evaluate architectural components
+✓ **Configuration-Driven**: All hyperparameters and preprocessing via YAML configs
+✓ **Efficiency Tracking**: Monitor training time, convergence, and computational metrics
+✓ **Comprehensive Evaluation**: Accuracy, precision, recall, F1, confusion matrix, ROC curves
+✓ **Reproducible**: Automatic timestamping, seed control, config snapshots
+✓ **Device Agnostic**: Works on CPU and GPU with automatic device management
+✓ **Modular Design**: Easy to extend with new datasets, models, or evaluation methods
 
 ## References
 
-This project draws inspiration from recent research on Transformer‑based intrusion detection.  In particular, the complexity bottleneck of self‑attention and the linear‑time Linformer architecture【8750594039919†L11-L18】【8750594039919†L117-L133】 motivated the choice of a lightweight Transformer.  Dataset details and baseline results are based on the analysis of NSL‑KDD and UNSW‑NB15 in the IoT‑IDS study【971553572116090†L401-L405】【971553572116090†L439-L444】.
+- **Linformer**: Sinai Berger et al. "Linformer: Self-Attention with Linear Complexity"
+- **NSL-KDD Dataset**: NSL-KDD Intrusion Detection Dataset
+- **UNSW-NB15**: UNSW-NB15 Network Attack Dataset
+- **CIC-IoT**: Canadian Institute for Cybersecurity IoT Attack Dataset
+
+## Authors
+
+Developed at IIIT Guwahati for intrusion detection research.
+
+## License
+
+See LICENSE file for details.
