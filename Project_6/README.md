@@ -13,10 +13,8 @@ This repository provides a full implementation of an **Intrusion Detection Syste
 The Linformer architecture approximates the attention matrix with low-rank projections, significantly reducing computational and memory requirements. By supporting multiple architectures, this project enables systematic evaluation and ablation studies for efficient and scalable network intrusion detection suitable for edge devices.
 
 **Supported Datasets:**
-- **NSL-KDD**: ~250,000 samples with 44 features (normal, DoS, R2L, probe, U2R attacks)
-- **UNSW-NB15**: ~257,673 samples with 42 features (DoS, exploits, reconnaissance, analysis, worms, backdoors, fuzzers)
-- **CIC-IoT**: IoT-specific attack dataset
-- **Edge-IIoT**: Industrial IoT attack dataset
+- **CIC-IoT 2023**: IoT-specific attack dataset with comprehensive attack scenarios
+- **Edge-IIoT**: Industrial IoT attack dataset for edge computing environments
 
 Both binary (normal vs. attack) and multi-class classification tasks are supported.
 
@@ -103,8 +101,6 @@ Project_6/
 Download datasets from their official sources and place CSV files in `data/raw/`:
 
 ```
-data/raw/nsl_kdd.csv
-data/raw/unsw_nb15.csv
 data/raw/ciciot_2023/ciciot_training_50_50.csv
 data/raw/edge_iiot_training.csv
 ```
@@ -118,16 +114,16 @@ The data loader expects:
 
 ### Basic Training
 
-Train on NSL-KDD with default configuration:
+Train on CIC-IoT 2023 with default configuration:
 ```bash
 python main_ciciot.py --mode train --config-profile default \
-    --input-file data/raw/nsl_kdd.csv
+    --input-file data/raw/ciciot_2023/ciciot_training_50_50.csv
 ```
 
 Train with custom hyperparameters:
 ```bash
 python main_ciciot.py --mode train --config-profile default \
-    --input-file data/raw/ciciot.csv \
+    --input-file data/raw/ciciot_2023/ciciot_training_50_50.csv \
     --epochs 50 --batch-size 32 --learning-rate 1e-3
 ```
 
@@ -339,9 +335,8 @@ black src/ --line-length=100
 ## References
 
 - **Linformer**: Sinai Berger et al. "Linformer: Self-Attention with Linear Complexity"
-- **NSL-KDD Dataset**: NSL-KDD Intrusion Detection Dataset
-- **UNSW-NB15**: UNSW-NB15 Network Attack Dataset
-- **CIC-IoT**: Canadian Institute for Cybersecurity IoT Attack Dataset
+- **CIC-IoT 2023**: Canadian Institute for Cybersecurity IoT Attack Dataset
+- **Edge-IIoT**: Industrial IoT Intrusion Detection Dataset
 
 ## Authors
 
